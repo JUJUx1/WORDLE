@@ -1,242 +1,244 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>TA PAGAL HO?</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background-color: #f0f0f0;
-      padding: 20px;
-    }
-    #game-board {
-      display: grid;
-      grid-template-rows: repeat(6, 1fr);
-      gap: 5px;
-      margin: 20px 0;
-    }
-    .row {
-      display: grid;
-      grid-template-columns: repeat(5, 60px);
-      gap: 5px;
-    }
-    .tile {
-      width: 60px;
-      height: 60px;
-      border: 2px solid #ccc;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2em;
-      text-transform: uppercase;
-      background-color: white;
-    }
-    .tile.green {
-      background-color: #6aaa64;
-      color: white;
-      border-color: #6aaa64;
-    }
-    .tile.yellow {
-      background-color: #c9b458;
-      color: white;
-      border-color: #c9b458;
-    }
-    .tile.gray {
-      background-color: #787c7e;
-      color: white;
-      border-color: #787c7e;
-    }
-    #input {
-      margin: 10px;
-      padding: 10px;
-      font-size: 1.2em;
-      text-transform: uppercase;
-    }
-    #message {
-      margin-top: 10px;
-      font-size: 1.2em;
-      color: #333;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 1em;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      margin: 5px;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-  </style>
-</head>
-<body>
-  <h1></h1>𝕎𝕆ℝ𝔻𝕃𝔼</h1>
-  <div id="game-board"></div>
-  <input type="text" id="input" maxlength="5" placeholder="Enter 5-letter word" inputmode="text" autocapitalize="characters">
-  <div>
-    <button onclick="submitGuess()">Submit</button>
-    <button onclick="restartGame()">Restart</button>
-  </div>
-  <div id="message"></div>
-
-  <!-- 🔊 Sound Effects -->
-  <audio id="click-sound" src="click.mp3"></audio>
-  <audio id="win-sound" src="win.mp3"></audio>
-  <audio id="lose-sound" src="lose.mp3"></audio>
-  <audio id="restart-sound" src="restart.mp3"></audio>
-
-  <script>
-    let targetWord = "";
-    let currentRow = 0;
-    let gameOver = false;
-    let validWords = [];
-    const gameBoard = document.getElementById("game-board");
-
-    const clickSound = document.getElementById("click-sound");
-    const winSound = document.getElementById("win-sound");
-    const loseSound = document.getElementById("lose-sound");
-    const restartSound = document.getElementById("restart-sound");
-
-    function play(sound) {
-      if (sound) {
-        sound.currentTime = 0;
-        sound.play();
-      }
-    }
-
-    async function loadWords() {
-      try {
-        const response = await fetch('words.txt');
-        if (!response.ok) throw new Error('Failed to load words.txt');
-        const text = await response.text();
-        validWords = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length === 5);
-        if (validWords.length === 0) throw new Error('No valid 5-letter words found');
-        targetWord = validWords[Math.floor(Math.random() * validWords.length)];
-        console.log('Target word:', targetWord); // Debug only
-      } catch (error) {
-        document.getElementById('message').textContent = 'Error loading words: ' + error.message;
-      }
-    }
-
-    function initGameBoard() {
-      for (let i = 0; i < 6; i++) {
-        const row = document.createElement("div");
-        row.className = "row";
-        for (let j = 0; j < 5; j++) {
-          const tile = document.createElement("div");
-          tile.className = "tile";
-          row.appendChild(tile);
-        }
-        gameBoard.appendChild(row);
-      }
-    }
-
-    document.getElementById("input").addEventListener("keypress", function(event) {
-      if (event.key === "Enter") {
-        submitGuess();
-      }
-    });
-
-    function submitGuess() {
-      const inputField = document.getElementById("input");
-      const message = document.getElementById("message");
-
-      if (gameOver || !targetWord) {
-        message.textContent = !targetWord ? 'Words not loaded yet!' : 'Game over!';
-        inputField.disabled = true;
-        return;
-      }
-
-      const guess = inputField.value.toUpperCase();
-
-      if (guess.length !== 5) {
-        message.textContent = "Please enter a 5-letter word!";
-        play(clickSound);
-        return;
-      }
-
-      if (!validWords.includes(guess)) {
-        message.textContent = "Not a valid word!";
-        play(clickSound);
-        return;
-      }
-
-      const row = gameBoard.children[currentRow];
-      const tiles = row.children;
-
-      // Fix for duplicates
-      let guessArray = guess.split('');
-      let targetArray = targetWord.split('');
-      let letterUsed = Array(5).fill(false);
-
-      // Pass 1 - green
-      for (let i = 0; i < 5; i++) {
-        tiles[i].textContent = guessArray[i];
-        if (guessArray[i] === targetArray[i]) {
-          tiles[i].classList.add("green");
-          letterUsed[i] = true;
-          guessArray[i] = null;
-        }
-      }
-
-      // Pass 2 - yellow
-      for (let i = 0; i < 5; i++) {
-        if (!tiles[i].classList.contains("green") && guessArray[i]) {
-          for (let j = 0; j < 5; j++) {
-            if (!letterUsed[j] && guessArray[i] === targetArray[j]) {
-              tiles[i].classList.add("yellow");
-              letterUsed[j] = true;
-              guessArray[i] = null;
-              break;
-            }
-          }
-        }
-
-        if (!tiles[i].classList.contains("green") && !tiles[i].classList.contains("yellow")) {
-          tiles[i].classList.add("gray");
-        }
-      }
-
-      // Check win
-      if (guess === targetWord) {
-        message.textContent = "🎉 Congratulations! You guessed it!";
-        play(winSound);
-        gameOver = true;
-        inputField.disabled = true;
-        return;
-      }
-
-      currentRow++;
-      if (currentRow >= 6) {
-        message.textContent = `❌ Game Over! The word was ${targetWord}.`;
-        play(loseSound);
-        gameOver = true;
-        inputField.disabled = true;
-      } else {
-        play(clickSound);
-      }
-
-      inputField.value = "";
-    }
-
-    function restartGame() {
-      play(restartSound);
-      setTimeout(() => location.reload(), 300);
-    }
-
-    async function init() {
-      await loadWords();
-      initGameBoard();
-    }
-
-    init();
-  </script>
-</body>
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
+  <title>TA PAGAL HO?</title>  
+  <style>  
+    body {  
+      font-family: Arial, sans-serif;  
+      display: flex;  
+      flex-direction: column;  
+      align-items: center;  
+      background-color: #f0f0f0;  
+      padding: 20px;  
+    }  
+    #game-board {  
+      display: grid;  
+      grid-template-rows: repeat(6, 1fr);  
+      gap: 5px;  
+      margin: 20px 0;  
+    }  
+    .row {  
+      display: grid;  
+      grid-template-columns: repeat(5, 60px);  
+      gap: 5px;  
+    }  
+    .tile {  
+      width: 60px;  
+      height: 60px;  
+      border: 2px solid #ccc;  
+      display: flex;  
+      align-items: center;  
+      justify-content: center;  
+      font-size: 2em;  
+      text-transform: uppercase;  
+      background-color: white;  
+    }  
+    .tile.green {  
+      background-color: #6aaa64;  
+      color: white;  
+      border-color: #6aaa64;  
+    }  
+    .tile.yellow {  
+      background-color: #c9b458;  
+      color: white;  
+      border-color: #c9b458;  
+    }  
+    .tile.gray {  
+      background-color: #787c7e;  
+      color: white;  
+      border-color: #787c7e;  
+    }  
+    #input {  
+      margin: 10px;  
+      padding: 10px;  
+      font-size: 1.2em;  
+      text-transform: uppercase;  
+    }  
+    #message {  
+      margin-top: 10px;  
+      font-size: 1.2em;  
+      color: #333;  
+    }  
+    button {  
+      padding: 10px 20px;  
+      font-size: 1em;  
+      cursor: pointer;  
+      background-color: #4CAF50;  
+      color: white;  
+      border: none;  
+      border-radius: 5px;  
+      margin: 5px;  
+    }  
+    button:hover {  
+      background-color: #45a049;  
+    }  
+  </style>  
+</head>  
+<body>  
+  <h1>𝕎𝕆ℝ𝔻𝕃𝔼</h1>  
+  <div id="game-board"></div>  
+  <input type="text" id="input" maxlength="5" placeholder="Enter 5-letter word" inputmode="text" autocapitalize="characters">  
+  <div>  
+    <button onclick="submitGuess()">Submit</button>  
+    <button onclick="restartGame()">Restart</button>  
+  </div>  
+  <div id="message"></div>  
+  
+  <!-- 🔊 Sound Effects -->  
+  <audio id="click-sound" src="click.mp3"></audio>  
+  <audio id="win-sound" src="win.mp3"></audio>  
+  <audio id="lose-sound" src="lose.mp3"></audio>  
+  <audio id="restart-sound" src="restart.mp3"></audio>  
+  <audio id="error-sound" src="error.mp3"></audio> <!-- Error sound added -->
+  
+  <script>  
+    let targetWord = "";  
+    let currentRow = 0;  
+    let gameOver = false;  
+    let validWords = [];  
+    const gameBoard = document.getElementById("game-board");  
+  
+    const clickSound = document.getElementById("click-sound");  
+    const winSound = document.getElementById("win-sound");  
+    const loseSound = document.getElementById("lose-sound");  
+    const restartSound = document.getElementById("restart-sound");  
+    const errorSound = document.getElementById("error-sound"); // Get error sound element
+  
+    function play(sound) {  
+      if (sound) {  
+        sound.currentTime = 0;  
+        sound.play();  
+      }  
+    }  
+  
+    async function loadWords() {  
+      try {  
+        const response = await fetch('words.txt');  
+        if (!response.ok) throw new Error('Failed to load words.txt');  
+        const text = await response.text();  
+        validWords = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length === 5);  
+        if (validWords.length === 0) throw new Error('No valid 5-letter words found');  
+        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
+        console.log('Target word:', targetWord); // Debug only  
+      } catch (error) {  
+        document.getElementById('message').textContent = 'Error loading words: ' + error.message;  
+      }  
+    }  
+  
+    function initGameBoard() {  
+      for (let i = 0; i < 6; i++) {  
+        const row = document.createElement("div");  
+        row.className = "row";  
+        for (let j = 0; j < 5; j++) {  
+          const tile = document.createElement("div");  
+          tile.className = "tile";  
+          row.appendChild(tile);  
+        }  
+        gameBoard.appendChild(row);  
+      }  
+    }  
+  
+    document.getElementById("input").addEventListener("keypress", function(event) {  
+      if (event.key === "Enter") {  
+        submitGuess();  
+      }  
+    });  
+  
+    function submitGuess() {  
+      const inputField = document.getElementById("input");  
+      const message = document.getElementById("message");  
+  
+      if (gameOver || !targetWord) {  
+        message.textContent = !targetWord ? 'Words not loaded yet!' : 'Game over!';  
+        inputField.disabled = true;  
+        return;  
+      }  
+  
+      const guess = inputField.value.toUpperCase();  
+  
+      if (guess.length !== 5) {  
+        message.textContent = "Please enter a 5-letter word!";  
+        play(clickSound);  
+        return;  
+      }  
+  
+      if (!validWords.includes(guess)) {  
+        message.textContent = "Not a valid word!";  
+        play(errorSound); // Play error sound when the guess is invalid
+        return;  
+      }  
+  
+      const row = gameBoard.children[currentRow];  
+      const tiles = row.children;  
+  
+      // Fix for duplicates  
+      let guessArray = guess.split('');  
+      let targetArray = targetWord.split('');  
+      let letterUsed = Array(5).fill(false);  
+  
+      // Pass 1 - green  
+      for (let i = 0; i < 5; i++) {  
+        tiles[i].textContent = guessArray[i];  
+        if (guessArray[i] === targetArray[i]) {  
+          tiles[i].classList.add("green");  
+          letterUsed[i] = true;  
+          guessArray[i] = null;  
+        }  
+      }  
+  
+      // Pass 2 - yellow  
+      for (let i = 0; i < 5; i++) {  
+        if (!tiles[i].classList.contains("green") && guessArray[i]) {  
+          for (let j = 0; j < 5; j++) {  
+            if (!letterUsed[j] && guessArray[i] === targetArray[j]) {  
+              tiles[i].classList.add("yellow");  
+              letterUsed[j] = true;  
+              guessArray[i] = null;  
+              break;  
+            }  
+          }  
+        }  
+  
+        if (!tiles[i].classList.contains("green") && !tiles[i].classList.contains("yellow")) {  
+          tiles[i].classList.add("gray");  
+        }  
+      }  
+  
+      // Check win  
+      if (guess === targetWord) {  
+        message.textContent = "🎉 Congratulations! You guessed it!";  
+        play(winSound);  
+        gameOver = true;  
+        inputField.disabled = true;  
+        return;  
+      }  
+  
+      currentRow++;  
+      if (currentRow >= 6) {  
+        message.textContent = `❌ Game Over! The word was ${targetWord}.`;  
+        play(loseSound);  
+        gameOver = true;  
+        inputField.disabled = true;  
+      } else {  
+        play(clickSound);  
+      }  
+  
+      inputField.value = "";  
+    }  
+  
+    function restartGame() {  
+      play(restartSound);  
+      setTimeout(() => location.reload(), 300);  
+    }  
+  
+    async function init() {  
+      await loadWords();  
+      initGameBoard();  
+    }  
+  
+    init();  
+  </script>  
+</body>  
 </html>
