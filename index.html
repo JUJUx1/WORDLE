@@ -3,7 +3,7 @@
 <head>  
   <meta charset="UTF-8" />  
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
-  <title>TA PAGAL HO?</title>  
+  <title>Wordle Game</title>  
   <style>  
     body {  
       font-family: Arial, sans-serif;  
@@ -12,6 +12,20 @@
       align-items: center;  
       background-color: #f0f0f0;  
       padding: 20px;  
+    }  
+    #login-page, #game-page {  
+      display: none;  
+      flex-direction: column;  
+      align-items: center;  
+      width: 100%;  
+      max-width: 400px;  
+    }  
+    #error-message {  
+      display: none;  
+      color: red;  
+      font-size: 1.2em;  
+      margin-top: 20px;  
+      text-align: center;  
     }  
     #game-board {  
       display: grid;  
@@ -34,6 +48,7 @@
       font-size: 2em;  
       text-transform: uppercase;  
       background-color: white;  
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;  
     }  
     .tile.green {  
       background-color: #6aaa64;  
@@ -50,15 +65,24 @@
       color: white;  
       border-color: #787c7e;  
     }  
-    #input {  
+    input {  
       margin: 10px;  
       padding: 10px;  
       font-size: 1.2em;  
+      width: 100%;  
+      box-sizing: border-box;  
+    }  
+    #input {  
       text-transform: uppercase;  
     }  
-    #message {  
+    #message, #login-message {  
       margin-top: 10px;  
       font-size: 1.2em;  
+      color: #333;  
+    }  
+    #score {  
+      margin: 10px 0;  
+      font-size: 1.1em;  
       color: #333;  
     }  
     button {  
@@ -74,171 +98,585 @@
     button:hover {  
       background-color: #45a049;  
     }  
+    button:disabled {  
+      background-color: #cccccc;  
+      cursor: not-allowed;  
+    }  
+    #reset-score-btn, #logout-btn {  
+      background-color: #d9534f;  
+    }  
+    #reset-score-btn:hover, #logout-btn:hover {  
+      background-color: #c9302c;  
+    }  
+    #leaderboard-btn, #admin-btn {  
+      background-color: #337ab7;  
+    }  
+    #leaderboard-btn:hover, #admin-btn:hover {  
+      background-color: #286090;  
+    }  
+    #admin-btn {  
+      display: none;  
+    }  
+    @media (max-width: 600px) {  
+      .row {  
+        grid-template-columns: repeat(5, 50px);  
+      }  
+      .tile {  
+        width: 50px;  
+        height: 50px;  
+        font-size: 1.5em;  
+      }  
+      #login-page, #game-page {  
+        max-width: 100%;  
+        padding: 0 10px;  
+      }  
+    }  
   </style>  
 </head>  
 <body>  
-  <h1>𝕎𝕆ℝ𝔻𝕃𝔼</h1>  
-  <div id="game-board"></div>  
-  <input type="text" id="input" maxlength="5" placeholder="Enter 5-letter word" inputmode="text" autocapitalize="characters">  
-  <div>  
-    <button onclick="submitGuess()">Submit</button>  
-    <button onclick="restartGame()">Restart</button>  
+  <div id="login-page">  
+    <h1>Login to Wordle</h1>  
+    <input type="text" id="username" placeholder="Username" aria-label="Enter your username">  
+    <input type="password" id="password" placeholder="Password" aria-label="Enter your password">  
+    <button onclick="login()">Login</button>  
+    <div id="login-message"></div>  
   </div>  
-  <div id="message"></div>  
-  
+  <div id="game-page">  
+    <h1>𝕎𝕆ℝ𝔻𝕃𝔼</h1>  
+    <div id="score">Logged in as: Unknown | Your Score: 0 | Highest Score: 0</div>  
+    <div id="game-board" role="grid" aria-label="Wordle game board"></div>  
+    <input 
+      type="text" 
+      id="input" 
+      maxlength="5" 
+      placeholder="Enter 5-letter word" 
+      inputmode="text" 
+      autocapitalize="characters" 
+      aria-label="Enter your 5-letter guess">  
+    <div>  
+      <button id="submit-btn" onclick="submitGuess()" disabled>Submit</button>  
+      <button onclick="restartGame()">Restart</button>  
+      <button id="reset-score-btn" onclick="resetScore()">Reset Score</button>  
+      <button id="logout-btn" onclick="logout()">Logout</button>  
+      <button id="leaderboard-btn" onclick="window.location.href='leaderboard.html'">Leaderboard</button>  
+      <button id="admin-btn" onclick="window.location.href='admin.html'">Admin Panel</button>  
+    </div>  
+    <div id="message"></div>  
+  </div>  
+  <div id="error-message">Error: Unable to load the game. Check console for details or try refreshing.</div>  
+
   <!-- 🔊 Sound Effects -->  
   <audio id="click-sound" src="click.mp3"></audio>  
   <audio id="win-sound" src="win.mp3"></audio>  
   <audio id="lose-sound" src="lose.mp3"></audio>  
   <audio id="restart-sound" src="restart.mp3"></audio>  
-  <audio id="error-sound" src="error.mp3"></audio> <!-- Error sound added -->
-  
+  <audio id="error-sound" src="error.mp3"></audio>  
+
   <script>  
     let targetWord = "";  
     let currentRow = 0;  
     let gameOver = false;  
     let validWords = [];  
+    let previousGuesses = [];  
+    let currentScore = 0;  
+    let currentUser = null;  
     const gameBoard = document.getElementById("game-board");  
-  
+    const inputField = document.getElementById("input");  
+    const submitBtn = document.getElementById("submit-btn");  
+    const message = document.getElementById("message");  
+    const scoreDisplay = document.getElementById("score");  
+    const loginPage = document.getElementById("login-page");  
+    const gamePage = document.getElementById("game-page");  
+    const loginMessage = document.getElementById("login-message");  
+    const usernameInput = document.getElementById("username");  
+    const passwordInput = document.getElementById("password");  
+    const adminBtn = document.getElementById("admin-btn");  
+    const errorMessage = document.getElementById("error-message");  
+
+    // Disable audio if files are missing (uncomment if no audio files)  
+    // const play = () => {};  
+    const play = (sound) => {  
+      if (sound && sound.src) {  
+        sound.currentTime = 0;  
+        sound.play().catch(() => console.warn('Audio file failed to play:', sound.src));  
+      }  
+    };  
+
     const clickSound = document.getElementById("click-sound");  
     const winSound = document.getElementById("win-sound");  
     const loseSound = document.getElementById("lose-sound");  
     const restartSound = document.getElementById("restart-sound");  
-    const errorSound = document.getElementById("error-sound"); // Get error sound element
-  
-    function play(sound) {  
-      if (sound) {  
-        sound.currentTime = 0;  
-        sound.play();  
+    const errorSound = document.getElementById("error-sound");  
+
+    // Fallback word list  
+    const fallbackWords = ["APPLE", "HOUSE", "QUICK", "BREAD", "SMILE"];  
+
+    // Simulate security.txt in localStorage  
+    function saveUserData(users) {  
+      try {  
+        localStorage.setItem('security.txt', JSON.stringify(users));  
+        console.log("User data saved:", users);  
+      } catch (error) {  
+        console.error("Error saving user data:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error saving user data. Check console.";  
       }  
     }  
-  
+
+    // Simulate score.txt in localStorage  
+    function saveScoreData(users) {  
+      try {  
+        const scores = Object.keys(users).map(username => ({  
+          username,  
+          totalScore: users[username].totalScore || 0  
+        }));  
+        localStorage.setItem('score.txt', JSON.stringify(scores));  
+        console.log("Score data saved:", scores);  
+      } catch (error) {  
+        console.error("Error saving score data:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error saving score data. Check console.";  
+      }  
+    }  
+
+    // Simple hash function for passwords (client-side demo only)  
+    function simpleHash(str) {  
+      str = String(str);  
+      let hash = 0;  
+      for (let i = 0; i < str.length; i++) {  
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);  
+        hash |= 0;  
+      }  
+      return hash;  
+    }  
+
+    // Initialize admin account  
+    function initializeAdmin() {  
+      console.log("Initializing admin account");  
+      try {  
+        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+        if (!users['Dipesh'] || users['Dipesh'].hashedPassword !== simpleHash('9804329373')) {  
+          users['Dipesh'] = {  
+            hashedPassword: simpleHash('9804329373'),  
+            totalScore: 0  
+          };  
+          saveUserData(users);  
+          saveScoreData(users);  
+        }  
+      } catch (error) {  
+        console.error("Error initializing admin:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error initializing admin account. Check console.";  
+      }  
+    }  
+
+    // Get highest score  
+    function getHighestScore() {  
+      try {  
+        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+        let highestScore = 0;  
+        for (let user in users) {  
+          highestScore = Math.max(highestScore, users[user].totalScore || 0);  
+        }  
+        return highestScore;  
+      } catch (error) {  
+        console.error("Error getting highest score:", error);  
+        return 0;  
+      }  
+    }  
+
+    // Update score display  
+    function updateScoreDisplay() {  
+      try {  
+        const highestScore = getHighestScore();  
+        scoreDisplay.textContent = `Logged in as: ${currentUser || 'Unknown'}${currentUser === 'Dipesh' ? ' (Admin)' : ''} | Your Score: ${currentScore} | Highest Score: ${highestScore}`;  
+        adminBtn.style.display = currentUser === 'Dipesh' ? 'inline-block' : 'none';  
+        console.log("Score display updated:", scoreDisplay.textContent);  
+      } catch (error) {  
+        console.error("Error updating score display:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error updating score display. Check console.";  
+      }  
+    }  
+
+    // Load words from file or use fallback  
     async function loadWords() {  
+      console.log("Loading words from words.txt");  
       try {  
         const response = await fetch('words.txt');  
-        if (!response.ok) throw new Error('Failed to load words.txt');  
+        if (!response.ok) throw new Error(`Failed to load words.txt: ${response.status}`);  
         const text = await response.text();  
         validWords = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length === 5);  
-        if (validWords.length === 0) throw new Error('No valid 5-letter words found');  
-        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
-        console.log('Target word:', targetWord); // Debug only  
-      } catch (error) {  
-        document.getElementById('message').textContent = 'Error loading words: ' + error.message;  
-      }  
-    }  
-  
-    function initGameBoard() {  
-      for (let i = 0; i < 6; i++) {  
-        const row = document.createElement("div");  
-        row.className = "row";  
-        for (let j = 0; j < 5; j++) {  
-          const tile = document.createElement("div");  
-          tile.className = "tile";  
-          row.appendChild(tile);  
+        if (validWords.length === 0) {  
+          validWords = fallbackWords;  
+          message.textContent = "Using fallback word list due to empty file.";  
         }  
-        gameBoard.appendChild(row);  
+        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
+        console.log("Words loaded, target word:", targetWord);  
+      } catch (error) {  
+        console.error("Error loading words:", error);  
+        validWords = fallbackWords;  
+        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
+        message.textContent = 'Using fallback word list due to error: ' + error.message;  
+        console.log("Using fallback words, target word:", targetWord);  
       }  
     }  
-  
-    document.getElementById("input").addEventListener("keypress", function(event) {  
-      if (event.key === "Enter") {  
-        submitGuess();  
+
+    // Initialize game board with exactly 6 rows  
+    function initGameBoard() {  
+      console.log("Initializing game board");  
+      try {  
+        while (gameBoard.firstChild) {  
+          gameBoard.removeChild(gameBoard.firstChild);  
+        }  
+        for (let i = 0; i < 6; i++) {  
+          const row = document.createElement("div");  
+          row.className = "row";  
+          row.setAttribute("role", "row");  
+          for (let j = 0; j < 5; j++) {  
+            const tile = document.createElement("div");  
+            tile.className = "tile";  
+            tile.setAttribute("role", "gridcell");  
+            row.appendChild(tile);  
+          }  
+          gameBoard.appendChild(row);  
+        }  
+        console.log("Game board initialized with 6 rows");  
+      } catch (error) {  
+        console.error("Error initializing game board:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error initializing game board. Check console.";  
+      }  
+    }  
+
+    // Login function with duplicate username check  
+    function login() {  
+      console.log("Login attempt");  
+      try {  
+        const username = usernameInput.value.trim();  
+        const password = passwordInput.value;  
+        if (!username || !password) {  
+          loginMessage.textContent = "Please enter both username and password!";  
+          play(errorSound);  
+          return;  
+        }  
+
+        const hashedPassword = simpleHash(String(password));  
+        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+
+        if (users[username]) {  
+          if (users[username].hashedPassword === hashedPassword) {  
+            currentUser = username;  
+            localStorage.setItem('currentUser', username);  
+            currentScore = users[username].totalScore || 0;  
+            loginPage.style.display = 'none';  
+            gamePage.style.display = 'flex';  
+            errorMessage.style.display = 'none';  
+            console.log("Login successful, user:", username);  
+            resetGameState();  
+            updateScoreDisplay();  
+            init();  
+          } else {  
+            loginMessage.textContent = "Incorrect password! Check your password and try again.";  
+            console.log(`Login failed for ${username}: Expected hash ${users[username].hashedPassword}, got ${hashedPassword}`);  
+            play(errorSound);  
+          }  
+        } else {  
+          users[username] = { hashedPassword, totalScore: 0 };  
+          saveUserData(users);  
+          saveScoreData(users);  
+          currentUser = username;  
+          localStorage.setItem('currentUser', username);  
+          currentScore = 0;  
+          loginPage.style.display = 'none';  
+          gamePage.style.display = 'flex';  
+          errorMessage.style.display = 'none';  
+          console.log("New user created, user:", username);  
+          resetGameState();  
+          updateScoreDisplay();  
+          init();  
+        }  
+        usernameInput.value = '';  
+        passwordInput.value = '';  
+      } catch (error) {  
+        console.error("Login error:", error);  
+        loginMessage.textContent = "Error during login. Check console.";  
+        errorMessage.style.display = 'block';  
+      }  
+    }  
+
+    // Logout function  
+    function logout() {  
+      try {  
+        play(restartSound);  
+        currentUser = null;  
+        localStorage.removeItem('currentUser');  
+        currentScore = 0;  
+        gamePage.style.display = 'none';  
+        loginPage.style.display = 'flex';  
+        errorMessage.style.display = 'none';  
+        loginMessage.textContent = '';  
+        message.textContent = '';  
+        console.log("Logged out");  
+      } catch (error) {  
+        console.error("Logout error:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error during logout. Check console.";  
+      }  
+    }  
+
+    // Input validation for alphabetic characters  
+    inputField.addEventListener("input", function() {  
+      try {  
+        this.value = this.value.replace(/[^a-zA-Z]/g, '').toUpperCase();  
+        submitBtn.disabled = this.value.length !== 5;  
+      } catch (error) {  
+        console.error("Input validation error:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error in input validation. Check console.";  
       }  
     });  
-  
-    function submitGuess() {  
-      const inputField = document.getElementById("input");  
-      const message = document.getElementById("message");  
-  
-      if (gameOver || !targetWord) {  
-        message.textContent = !targetWord ? 'Words not loaded yet!' : 'Game over!';  
-        inputField.disabled = true;  
-        return;  
-      }  
-  
-      const guess = inputField.value.toUpperCase();  
-  
-      if (guess.length !== 5) {  
-        message.textContent = "Please enter a 5-letter word!";  
-        play(clickSound);  
-        return;  
-      }  
-  
-      if (!validWords.includes(guess)) {  
-        message.textContent = "Not a valid word!";  
-        play(errorSound); // Play error sound when the guess is invalid
-        return;  
-      }  
-  
-      const row = gameBoard.children[currentRow];  
-      const tiles = row.children;  
-  
-      // Fix for duplicates  
-      let guessArray = guess.split('');  
-      let targetArray = targetWord.split('');  
-      let letterUsed = Array(5).fill(false);  
-  
-      // Pass 1 - green  
-      for (let i = 0; i < 5; i++) {  
-        tiles[i].textContent = guessArray[i];  
-        if (guessArray[i] === targetArray[i]) {  
-          tiles[i].classList.add("green");  
-          letterUsed[i] = true;  
-          guessArray[i] = null;  
+
+    // Handle Enter key for login  
+    usernameInput.addEventListener("keypress", function(event) {  
+      if (event.key === "Enter") login();  
+    });  
+    passwordInput.addEventListener("keypress", function(event) {  
+      if (event.key === "Enter") login();  
+    });  
+
+    // Handle Enter key for game  
+    inputField.addEventListener("keypress", function(event) {  
+      if (event.key === "Enter") submitGuess();  
+    });  
+
+    // Reset game state  
+    function resetGameState() {  
+      console.log("Resetting game state");  
+      try {  
+        currentRow = 0;  
+        gameOver = false;  
+        previousGuesses = [];  
+        currentScore = 0;  
+        inputField.disabled = false;  
+        inputField.value = "";  
+        submitBtn.disabled = true;  
+        message.textContent = "";  
+        while (gameBoard.firstChild) {  
+          gameBoard.removeChild(gameBoard.firstChild);  
         }  
+      } catch (error) {  
+        console.error("Error resetting game state:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error resetting game state. Check console.";  
       }  
-  
-      // Pass 2 - yellow  
-      for (let i = 0; i < 5; i++) {  
-        if (!tiles[i].classList.contains("green") && guessArray[i]) {  
-          for (let j = 0; j < 5; j++) {  
-            if (!letterUsed[j] && guessArray[i] === targetArray[j]) {  
-              tiles[i].classList.add("yellow");  
-              letterUsed[j] = true;  
-              guessArray[i] = null;  
-              break;  
-            }  
+    }  
+
+    // Submit guess logic  
+    function submitGuess() {  
+      try {  
+        if (gameOver || !targetWord) {  
+          message.textContent = !targetWord ? 'Words not loaded yet!' : 'Game over!';  
+          inputField.disabled = true;  
+          submitBtn.disabled = true;  
+          return;  
+        }  
+
+        const guess = inputField.value.toUpperCase();  
+
+        if (guess.length !== 5) {  
+          message.textContent = "Please enter a 5-letter word!";  
+          play(clickSound);  
+          return;  
+        }  
+
+        if (!validWords.includes(guess)) {  
+          message.textContent = "Not a valid word!";  
+          play(errorSound);  
+          return;  
+        }  
+
+        if (previousGuesses.includes(guess)) {  
+          message.textContent = "You already guessed that word!";  
+          play(errorSound);  
+          return;  
+        }  
+
+        previousGuesses.push(guess);  
+
+        const row = gameBoard.children[currentRow];  
+        const tiles = row.children;  
+
+        let guessArray = guess.split('');  
+        let targetArray = targetWord.split('');  
+        let letterUsed = Array(5).fill(false);  
+
+        for (let i = 0; i < 5; i++) {  
+          tiles[i].textContent = guessArray[i];  
+          if (guessArray[i] === targetArray[i]) {  
+            tiles[i].classList.add("green");  
+            letterUsed[i] = true;  
+            guessArray[i] = null;  
           }  
         }  
-  
-        if (!tiles[i].classList.contains("green") && !tiles[i].classList.contains("yellow")) {  
-          tiles[i].classList.add("gray");  
+
+        for (let i = 0; i < 5; i++) {  
+          if (!tiles[i].classList.contains("green") && guessArray[i]) {  
+            for (let j = 0; j < 5; j++) {  
+              if (!letterUsed[j] && guessArray[i] === targetArray[j]) {  
+                tiles[i].classList.add("yellow");  
+                letterUsed[j] = true;  
+                guessArray[i] = null;  
+                break;  
+              }  
+            }  
+          }  
+          if (!tiles[i].classList.contains("green") && !tiles[i].classList.contains("yellow")) {  
+            tiles[i].classList.add("gray");  
+          }  
         }  
+
+        if (guess === targetWord) {  
+          currentScore = [100, 80, 60, 40, 20, 10][currentRow];  
+          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+          users[currentUser].totalScore = (users[currentUser].totalScore || 0) + currentScore;  
+          saveUserData(users);  
+          saveScoreData(users);  
+          message.textContent = `🎉 Congratulations! You guessed it! (+${currentScore} points)`;  
+          play(winSound);  
+          gameOver = true;  
+          inputField.disabled = true;  
+          submitBtn.disabled = true;  
+          updateScoreDisplay();  
+          return;  
+        }  
+
+        currentRow++;  
+        if (currentRow >= 6) {  
+          message.textContent = `❌ Game Over! The word was ${targetWord}.`;  
+          play(loseSound);  
+          currentScore = 0;  
+          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+          users[currentUser].totalScore = users[currentUser].totalScore || 0;  
+          saveUserData(users);  
+          saveScoreData(users);  
+          gameOver = true;  
+          inputField.disabled = true;  
+          submitBtn.disabled = true;  
+          updateScoreDisplay();  
+        } else {  
+          play(clickSound);  
+        }  
+
+        inputField.value = "";  
+      } catch (error) {  
+        console.error("Error submitting guess:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error submitting guess. Check console.";  
       }  
-  
-      // Check win  
-      if (guess === targetWord) {  
-        message.textContent = "🎉 Congratulations! You guessed it!";  
-        play(winSound);  
-        gameOver = true;  
-        inputField.disabled = true;  
-        return;  
-      }  
-  
-      currentRow++;  
-      if (currentRow >= 6) {  
-        message.textContent = `❌ Game Over! The word was ${targetWord}.`;  
-        play(loseSound);  
-        gameOver = true;  
-        inputField.disabled = true;  
-      } else {  
-        play(clickSound);  
-      }  
-  
-      inputField.value = "";  
     }  
-  
+
+    // Restart game  
     function restartGame() {  
-      play(restartSound);  
-      setTimeout(() => location.reload(), 300);  
+      console.log("Restarting game");  
+      try {  
+        play(restartSound);  
+        resetGameState();  
+        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
+        initGameBoard();  
+        updateScoreDisplay();  
+      } catch (error) {  
+        console.error("Error restarting game:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error restarting game. Check console.";  
+      }  
     }  
-  
+
+    // Reset score for current user  
+    function resetScore() {  
+      try {  
+        if (confirm("Are you sure you want to reset your score?")) {  
+          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+          users[currentUser].totalScore = 0;  
+          saveUserData(users);  
+          saveScoreData(users);  
+          currentScore = 0;  
+          updateScoreDisplay();  
+          message.textContent = "Your score has been reset!";  
+          play(restartSound);  
+        }  
+      } catch (error) {  
+        console.error("Error resetting score:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error resetting score. Check console.";  
+      }  
+    }  
+
+    // Check for existing session  
+    function checkSession() {  
+      console.log("Checking session");  
+      try {  
+        const savedUser = localStorage.getItem('currentUser');  
+        if (savedUser) {  
+          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+          if (users[savedUser]) {  
+            currentUser = savedUser;  
+            currentScore = users[savedUser].totalScore || 0;  
+            loginPage.style.display = 'none';  
+            gamePage.style.display = 'flex';  
+            errorMessage.style.display = 'none';  
+            console.log("Session found, user:", currentUser);  
+            resetGameState();  
+            updateScoreDisplay();  
+            init();  
+          } else {  
+            localStorage.removeItem('currentUser');  
+            loginPage.style.display = 'flex';  
+            gamePage.style.display = 'none';  
+            errorMessage.style.display = 'none';  
+            console.log("Invalid session, showing login page");  
+          }  
+        } else {  
+          loginPage.style.display = 'flex';  
+          gamePage.style.display = 'none';  
+          errorMessage.style.display = 'none';  
+          console.log("No session, showing login page");  
+        }  
+      } catch (error) {  
+        console.error("Session check error:", error);  
+        loginPage.style.display = 'flex';  
+        gamePage.style.display = 'none';  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Error checking session. Check console.";  
+      }  
+    }  
+
+    // Initialize game  
     async function init() {  
-      await loadWords();  
-      initGameBoard();  
+      console.log("Initializing game");  
+      try {  
+        await loadWords();  
+        initGameBoard();  
+        console.log("Game initialized successfully");  
+      } catch (error) {  
+        console.error("Initialization error:", error);  
+        errorMessage.style.display = 'block';  
+        errorMessage.textContent = "Failed to initialize game: " + error.message;  
+      }  
     }  
-  
-    init();  
+
+    // Initialize admin and check session  
+    console.log("Starting game load");  
+    try {  
+      initializeAdmin();  
+      checkSession();  
+    } catch (error) {  
+      console.error("Startup error:", error);  
+      loginPage.style.display = 'flex';  
+      gamePage.style.display = 'none';  
+      errorMessage.style.display = 'block';  
+      errorMessage.textContent = "Startup error. Check console and try refreshing.";  
+    }  
   </script>  
 </body>  
 </html>
