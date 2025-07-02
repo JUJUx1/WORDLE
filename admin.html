@@ -1,0 +1,218 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
+  <title>Wordle Admin Panel</title>  
+  <style>  
+    body {  
+      font-family: Arial, sans-serif;  
+      display: flex;  
+      flex-direction: column;  
+      align-items: center;  
+      background-color: #f0f0f0;  
+      padding: 20px;  
+    }  
+    #admin-panel {  
+      width: 100%;  
+      max-width: 400px;  
+      display: flex;  
+      flex-direction: column;  
+      align-items: center;  
+    }  
+    select {  
+      margin: 10px;  
+      padding: 10px;  
+      font-size: 1.2em;  
+      width: 100%;  
+      box-sizing: border-box;  
+    }  
+    #message {  
+      margin-top: 10px;  
+      font-size: 1.2em;  
+      color: #333;  
+    }  
+    button {  
+      padding: 10px 20px;  
+      font-size: 1em;  
+      cursor: pointer;  
+      background-color: #4CAF50;  
+      color: white;  
+      border: none;  
+      border-radius: 5px;  
+      margin: 5px;  
+    }  
+    button:hover {  
+      background-color: #45a049;  
+    }  
+    button:disabled {  
+      background-color: #cccccc;  
+      cursor: not-allowed;  
+    }  
+    #delete-user-btn, #reset-leaderboard-btn, #reset-storage-btn {  
+      background-color: #d9534f;  
+    }  
+    #delete-user-btn:hover, #reset-leaderboard-btn:hover, #reset-storage-btn:hover {  
+      background-color: #c9302c;  
+    }  
+    #back-btn {  
+      background-color: #337ab7;  
+    }  
+    #back-btn:hover {  
+      background-color: #286090;  
+    }  
+    @media (max-width: 600px) {  
+      #admin-panel {  
+        max-width: 100%;  
+        padding: 0 10px;  
+      }  
+    }  
+  </style>  
+</head>  
+<body>  
+  <h1>Wordle Admin Panel</h1>  
+  <div id="admin-panel">  
+    <select id="delete-user-select" aria-label="Select user to delete">  
+      <option value="">Select user to delete</option>  
+    </select>  
+    <button id="delete-user-btn" onclick="deleteUser()" disabled>Delete User</button>  
+    <button id="reset-leaderboard-btn" onclick="resetLeaderboard()">Reset Leaderboard</button>  
+    <button id="reset-storage-btn" onclick="resetStorage()">Reset Storage</button>  
+    <button id="back-btn" onclick="window.location.href='index.html'">Back to Game</button>  
+    <div id="message"></div>  
+  </div>  
+
+  <!-- 🔊 Sound Effects -->  
+  <audio id="restart-sound" src="restart.mp3"></audio>  
+  <audio id="error-sound" src="error.mp3"></audio>  
+
+  <script>  
+    const message = document.getElementById("message");  
+    const deleteUserSelect = document.getElementById("delete-user-select");  
+    const deleteUserBtn = document.getElementById("delete-user-btn");  
+    const restartSound = document.getElementById("restart-sound");  
+    const errorSound = document.getElementById("error-sound");  
+
+    // Disable audio if files are missing  
+    const play = (sound) => {  
+      if (sound && sound.src) {  
+        sound.currentTime = 0;  
+        sound.play().catch(() => console.warn('Audio file failed to play:', sound.src));  
+      }  
+    };  
+
+    // Simulate security.txt in localStorage  
+    function saveUserData(users) {  
+      localStorage.setItem('security.txt', JSON.stringify(users));  
+    }  
+
+    // Simulate score.txt in localStorage  
+    function saveScoreData(users) {  
+      const scores = Object.keys(users).map(username => ({  
+        username,  
+        totalScore: users[username].totalScore || 0  
+      }));  
+      localStorage.setItem('score.txt', JSON.stringify(scores));  
+    }  
+
+    // Simple hash function for passwords (client-side demo only)  
+    function simpleHash(str) {  
+      str = String(str);  
+      let hash = 0;  
+      for (let i = 0; i < str.length; i++) {  
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);  
+        hash |= 0;  
+      }  
+      return hash;  
+    }  
+
+    // Populate delete user dropdown  
+    function populateDeleteUserDropdown() {  
+      const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+      deleteUserSelect.innerHTML = '<option value="">Select user to delete</option>';  
+      Object.keys(users).forEach(username => {  
+        if (username !== 'Dipesh') {  
+          const option = document.createElement('option');  
+          option.value = username;  
+          option.textContent = username;  
+          deleteUserSelect.appendChild(option);  
+        }  
+      });  
+      deleteUserBtn.disabled = !deleteUserSelect.value;  
+    }  
+
+    // Reset leaderboard (admin only)  
+    function resetLeaderboard() {  
+      if (localStorage.getItem('currentUser') !== 'Dipesh') return;  
+      if (confirm("Are you sure you want to reset the leaderboard? All scores will be set to 0.")) {  
+        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+        for (let user in users) {  
+          users[user].totalScore = 0;  
+        }  
+        saveUserData(users);  
+        saveScoreData(users);  
+        message.textContent = "Leaderboard reset!";  
+        play(restartSound);  
+      }  
+    }  
+
+    // Delete user (admin only)  
+    function deleteUser() {  
+      if (localStorage.getItem('currentUser') !== 'Dipesh') return;  
+      const usernameToDelete = deleteUserSelect.value;  
+      if (!usernameToDelete) {  
+        message.textContent = "Please select a user to delete!";  
+        play(errorSound);  
+        return;  
+      }  
+      if (confirm(`Are you sure you want to delete user ${usernameToDelete}?`)) {  
+        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+        delete users[usernameToDelete];  
+        saveUserData(users);  
+        saveScoreData(users);  
+        populateDeleteUserDropdown();  
+        message.textContent = `User ${usernameToDelete} deleted!`;  
+        play(restartSound);  
+      }  
+    }  
+
+    // Reset localStorage (admin only)  
+    function resetStorage() {  
+      if (localStorage.getItem('currentUser') !== 'Dipesh') return;  
+      if (confirm("Are you sure you want to reset all data? This will clear all users and scores, and you will be logged out.")) {  
+        localStorage.clear();  
+        const users = {  
+          'Dipesh': {  
+            hashedPassword: simpleHash('9804329373'),  
+            totalScore: 0  
+          }  
+        };  
+        saveUserData(users);  
+        saveScoreData(users);  
+        localStorage.removeItem('currentUser');  
+        message.textContent = "Storage reset! Redirecting to login...";  
+        play(restartSound);  
+        setTimeout(() => window.location.href = 'index.html', 1000);  
+      }  
+    }  
+
+    // Check admin access  
+    function checkAdminAccess() {  
+      if (localStorage.getItem('currentUser') !== 'Dipesh') {  
+        message.textContent = "Access denied! Only admin can view this page. Redirecting...";  
+        setTimeout(() => window.location.href = 'index.html', 1000);  
+      } else {  
+        populateDeleteUserDropdown();  
+      }  
+    }  
+
+    // Handle delete user dropdown change  
+    deleteUserSelect.addEventListener("change", function() {  
+      deleteUserBtn.disabled = !this.value;  
+    });  
+
+    // Initialize admin panel  
+    checkAdminAccess();  
+  </script>  
+</body>  
+</html>
