@@ -1396,7 +1396,7 @@ function revealRow(row, guess, result) {
   const stagger = 300;
   result.forEach((tileState, col) => {
     setTimeout(() => {
-      const tile = window.state.board[row][col];
+      const tile = state.board[row][col];
       tile.classList.remove('filled');
       // Set color at midpoint so it appears as tile flips back
       setTimeout(() => {
