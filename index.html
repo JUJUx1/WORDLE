@@ -457,6 +457,7 @@
       display: grid;
       gap: 5px;
       margin-bottom: 1.2rem;
+      perspective: 250px;
     }
     .tile {
       display: flex;
@@ -470,24 +471,25 @@
       background: var(--tile-bg);
       color: var(--text);
       user-select: none;
-      transition: border-color .1s;
       position: relative;
+      transition: border-color .1s;
+      transform-style: preserve-3d;
     }
     .tile.filled { border-color: var(--text-muted); animation: pop .1s ease; }
-    .tile.revealed { border-color: transparent; }
-    .tile[data-state="correct"]  { background: var(--correct); color: #fff; border-color: transparent; }
-    .tile[data-state="present"]  { background: var(--present); color: #fff; border-color: transparent; }
-    .tile[data-state="absent"]   { background: var(--absent);  color: var(--text); border-color: transparent; }
+    .tile[data-state="correct"]  { background: var(--correct); color: #fff; border-color: var(--correct); }
+    .tile[data-state="present"]  { background: var(--present); color: #fff; border-color: var(--present); }
+    .tile[data-state="absent"]   { background: var(--absent);  color: var(--text-muted); border-color: var(--absent); }
+    .tile.flipping { animation: flipReveal .5s ease forwards; }
 
     @keyframes pop {
       0%   { transform: scale(1); }
       50%  { transform: scale(1.12); }
       100% { transform: scale(1); }
     }
-    @keyframes flipIn {
+    @keyframes flipReveal {
       0%   { transform: rotateX(0deg); }
-      45%  { transform: rotateX(-90deg); }
-      55%  { transform: rotateX(-90deg); }
+      49%  { transform: rotateX(-90deg); }
+      50%  { transform: rotateX(-90deg); }
       100% { transform: rotateX(0deg); }
     }
     @keyframes shake {
@@ -1315,6 +1317,7 @@ function submitGuess() {
 // Solo validation response
 socket.on('wordValid', () => {
   const guess = socket._pendingGuess;
+  socket._pendingGuess = null;
   if (!guess) return;
   const result = checkGuessLocal(guess, state.word);
   revealRow(state.currentRow, guess, result);
@@ -1333,6 +1336,7 @@ socket.on('wordValid', () => {
 });
 
 socket.on('invalidWord', () => {
+  socket._pendingGuess = null;
   toast('Not in word list');
   shakeRow(state.currentRow);
 });
@@ -1388,18 +1392,18 @@ function checkGuessLocal(guess, word) {
 // REVEAL ROW
 // ─────────────────────────────────────────────────────────────────────────────
 function revealRow(row, guess, result) {
-  const flipDuration = 500; // ms total flip duration per tile
-  const stagger = 300;      // ms between each tile starting
+  const flipDuration = 500;
+  const stagger = 300;
   result.forEach((tileState, col) => {
-    const tile = window.state.board[row][col];
     setTimeout(() => {
-      // Apply color at midpoint of flip (when tile is face-down)
-      setTimeout(() => { tile.dataset.state = tileState; }, flipDuration / 2);
-      tile.style.transition = `transform ${flipDuration}ms ease`;
-      tile.style.transform = 'rotateX(-90deg)';
+      const tile = window.state.board[row][col];
+      tile.classList.remove('filled');
+      // Set color at midpoint so it appears as tile flips back
       setTimeout(() => {
-        tile.style.transform = 'rotateX(0deg)';
+        tile.dataset.state = tileState;
       }, flipDuration / 2);
+      tile.classList.add('flipping');
+      tile.addEventListener('animationend', () => tile.classList.remove('flipping'), { once: true });
     }, col * stagger);
   });
 }
