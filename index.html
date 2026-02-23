@@ -7,6 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet" />
   <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <script type="module">
+    import wordLib from 'https://cdn.jsdelivr.net/npm/word-lib@2.0.0/+esm';
+    window.wordLib = wordLib;
+  </script>
 
   <style>
     /* ═══ VARIABLES & RESET ══════════════════════════════════════════════════ */
@@ -660,6 +664,83 @@
     .mini-tile.present { background: var(--present); }
     .mini-tile.absent  { background: var(--absent); }
 
+    /* ─── PROGRESS BARS (in-game) ──────────────────────────────────────────── */
+    #progress-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: .8rem;
+      width: 100%;
+      max-width: 340px;
+    }
+    .progress-player-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .progress-label {
+      font-size: .6rem;
+      color: var(--text-muted);
+      width: 58px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .progress-track {
+      flex: 1;
+      height: 5px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width .4s ease, background .3s;
+      background: var(--present);
+      width: 0%;
+    }
+    .progress-fill.solved { background: var(--correct); }
+    .progress-fill.failed { background: var(--absent); }
+
+    /* ─── PODIUM ───────────────────────────────────────────────────────────── */
+    .podium-wrap {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 1.75rem;
+    }
+    .podium-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .podium-name {
+      font-size: .72rem;
+      font-weight: 700;
+      text-align: center;
+      max-width: 72px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .podium-score { font-size: .6rem; color: var(--text-muted); }
+    .podium-block {
+      border-radius: 6px 6px 0 0;
+      width: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .podium-1 { height: 88px; background: linear-gradient(180deg,#c9a227,#a07c10); }
+    .podium-2 { height: 64px; background: linear-gradient(180deg,#9a9a9a,#6a6a6a); }
+    .podium-3 { height: 46px; background: linear-gradient(180deg,#a0714a,#7a5030); }
+
     /* ─── MISC ─────────────────────────────────────────────────────────── */
     .error-msg {
       font-size: .8rem;
@@ -725,10 +806,10 @@
 
   <!-- Name card -->
   <div class="card">
-    <h2>Your Name</h2>
+    <h2>Your Name <span style="font-size:.65rem;color:var(--correct);font-weight:400;letter-spacing:.05em">✎ saved automatically</span></h2>
     <div class="name-row">
       <label for="player-name">Name</label>
-      <input class="input-field" id="player-name" type="text" maxlength="20" placeholder="Anonymous" />
+      <input class="input-field" id="player-name" type="text" maxlength="20" placeholder="Anonymous" autocomplete="nickname" />
     </div>
   </div>
 
@@ -753,7 +834,7 @@
     <div id="tab-public">
       <div class="length-label">Word length</div>
       <div class="length-picker" id="pub-length-picker"></div>
-      <button class="btn btn-primary" id="pub-join-btn">Find Public Room</button>
+      <button class="btn btn-primary" id="pub-join-btn">Join Public Game</button>
     </div>
 
     <!-- Private Create -->
@@ -821,6 +902,7 @@
 
   <!-- Board + keyboard -->
   <div class="game-center">
+    <div id="progress-bars" class="hidden"></div>
     <div id="board"></div>
     <div id="keyboard"></div>
   </div>
@@ -866,6 +948,7 @@ const state = {
   roomCode: '',
   isHost: false,
   players: [],
+  roomType: 'public',
   spLength: 5,
   pubLength: 5,
   privCLength: 5,
@@ -895,7 +978,7 @@ themeBtn.addEventListener('click', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // WORD LENGTHS
 // ─────────────────────────────────────────────────────────────────────────────
-let availableLengths = [3,4,5,6,7,8];
+let availableLengths = [3,4,5,6,7,8,9];
 
 function requestWordLengths() {
   socket.emit('getAvailableLengths');
@@ -965,6 +1048,17 @@ function showScreen(id) {
 showScreen('home-screen');
 
 // ─────────────────────────────────────────────────────────────────────────────
+// USERNAME PERSISTENCE
+// ─────────────────────────────────────────────────────────────────────────────
+const nameInput = document.getElementById('player-name');
+const savedName = localStorage.getItem('worduel_username');
+if (savedName) nameInput.value = savedName;
+nameInput.addEventListener('input', () => {
+  const v = nameInput.value.trim();
+  if (v) localStorage.setItem('worduel_username', v);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HOME ACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 function getPlayerName() {
@@ -1026,12 +1120,13 @@ socket.on('roomJoined', ({ roomCode, room, isHost, myId }) => {
   state.isHost = isHost;
   state.myId = myId;
   state.wordLength = room.wordLength;
+  state.roomType = room.type;
 
   // Render lobby
   document.getElementById('lobby-code-text').textContent = roomCode;
   document.getElementById('lobby-meta').innerHTML =
     `${room.wordLength}-letter words<br>` +
-    (room.type === 'public' ? 'Public room' : `Private · max ${room.maxPlayers || '∞'} players`);
+    (room.type === 'public' ? 'Public · No host · auto-starts' : `Private · max ${room.maxPlayers || '∞'} players`);
 
   document.getElementById('lobby-start-btn').classList.toggle('hidden', !isHost || room.type === 'public');
   if (room.type === 'public') document.getElementById('lobby-countdown').classList.remove('hidden');
@@ -1044,17 +1139,21 @@ socket.on('playerList', (players) => {
   state.players = players;
   renderLobbyPlayers(players);
   renderSidebarPlayers(players);
+  if (state.mode === 'multi' && !document.getElementById('game-screen').classList.contains('hidden')) {
+    renderProgressBars(players);
+  }
 });
 
 function renderLobbyPlayers(players) {
   const list = document.getElementById('lobby-player-list');
   list.innerHTML = '<div class="player-list-header">Players</div>';
+  const isPublic = state.roomType === 'public';
   players.forEach((p, i) => {
     const el = document.createElement('div');
     el.className = 'player-item';
     const initials = p.name.slice(0,2).toUpperCase();
     const tags = [];
-    if (i === 0) tags.push('<span class="player-tag host">HOST</span>');
+    if (i === 0 && !isPublic) tags.push('<span class="player-tag host">HOST</span>');
     if (p.id === state.myId) tags.push('<span class="player-tag you">YOU</span>');
     el.innerHTML = `
       <div class="player-avatar">${initials}</div>
@@ -1127,13 +1226,17 @@ function startGame() {
   // Build keyboard
   buildKeyboard();
 
-  // Show/hide sidebar
+  // Show/hide sidebar and progress bars
   const sidebar = document.getElementById('game-sidebar');
+  const progressBars = document.getElementById('progress-bars');
   if (state.mode === 'multi') {
     sidebar.classList.remove('hidden');
+    progressBars.classList.remove('hidden');
     renderSidebarPlayers(state.players);
+    renderProgressBars(state.players);
   } else {
     sidebar.classList.add('hidden');
+    progressBars.classList.add('hidden');
   }
 
   showScreen('game-screen');
@@ -1259,6 +1362,7 @@ socket.on('playerUpdate', (player) => {
   // Update sidebar
   state.players = state.players.map(p => p.id === player.id ? { ...p, ...player } : p);
   renderSidebarPlayers(state.players);
+  updateProgressBar(player);
 });
 
 socket.on('gameEnd', ({ results, word }) => {
@@ -1338,8 +1442,35 @@ function renderSidebarPlayers(players) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RESULTS
+// PROGRESS BARS
 // ─────────────────────────────────────────────────────────────────────────────
+function renderProgressBars(players) {
+  const container = document.getElementById('progress-bars');
+  container.innerHTML = '';
+  players.forEach(p => {
+    const pct = Math.round((p.attempts / 6) * 100);
+    const fillClass = p.solved ? 'solved' : p.finished ? 'failed' : '';
+    const row = document.createElement('div');
+    row.className = 'progress-player-row';
+    row.dataset.pid = p.id;
+    row.innerHTML = `
+      <div class="progress-label" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+      <div class="progress-track"><div class="progress-fill ${fillClass}" style="width:${pct}%"></div></div>`;
+    container.appendChild(row);
+  });
+}
+
+function updateProgressBar(player) {
+  const container = document.getElementById('progress-bars');
+  let row = container.querySelector(`[data-pid="${player.id}"]`);
+  if (!row) { renderProgressBars(state.players); return; }
+  const fill = row.querySelector('.progress-fill');
+  const pct = Math.round((player.attempts / 6) * 100);
+  fill.style.width = pct + '%';
+  fill.className = 'progress-fill' + (player.solved ? ' solved' : player.finished ? ' failed' : '');
+}
+
+
 function showResultsSolo(solved) {
   document.getElementById('results-heading').textContent = solved ? 'Solved!' : 'Better luck next time';
   document.getElementById('results-word').innerHTML = `The word was <strong>${state.word.toUpperCase()}</strong>`;
@@ -1352,8 +1483,32 @@ function showResultsMulti(results, word) {
   document.getElementById('results-heading').textContent = winner ? `${escHtml(winner.name)} wins!` : 'No one solved it';
   document.getElementById('results-word').innerHTML = `The word was <strong>${(word||'').toUpperCase()}</strong>`;
 
+  // Build podium (top 3)
+  const podiumWrap = document.createElement('div');
+  podiumWrap.className = 'podium-wrap';
+  const podiumOrder = [1, 0, 2]; // visual order: 2nd, 1st, 3rd
+  const medals = ['🥇','🥈','🥉'];
+  const heights = ['podium-1','podium-2','podium-3'];
+  podiumOrder.forEach(idx => {
+    const r = results[idx];
+    if (!r) return;
+    const col = document.createElement('div');
+    col.className = 'podium-col';
+    const scoreText = r.solved ? `${r.attempts}/6` : '✗';
+    col.innerHTML = `
+      <div class="podium-name">${escHtml(r.name)}</div>
+      <div class="podium-score">${scoreText}</div>
+      <div class="podium-block ${heights[idx]}">${medals[idx]}</div>`;
+    podiumWrap.appendChild(col);
+  });
+
   const list = document.getElementById('results-list');
   list.innerHTML = '';
+  // Insert podium before the list if there are >1 players
+  if (results.length >= 2) {
+    list.appendChild(podiumWrap);
+  }
+
   results.forEach((r, i) => {
     const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
     const el = document.createElement('div');
