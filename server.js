@@ -20,7 +20,7 @@ let wordsByLength = {};
 async function loadWords() {
   // Set WORDS_URL env var to your raw GitHub words.txt URL
   const url = process.env.WORDS_URL ||
-    'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/words.txt';
+    'https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt';
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
