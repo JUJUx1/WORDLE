@@ -49,6 +49,8 @@ async function loadWords() {
       5: ['crane','slate','brave','flame','ghost','pride','swift','truth','crypt','gloom'],
       6: ['planet','silver','glitch','flower','candle','friend','bridge','castle','mirror','basket'],
       7: ['surface','hundred','captain','diamond','mission','blanket','silence','chapter','monster','flutter'],
+      8: ['complete','together','children','mountain','struggle','platform','absolute','calendar','hospital','language'],
+      9: ['beautiful','challenge','important','adventure','knowledge','carefully','wonderful','developed','something','different'],
     };
   }
 }
@@ -423,6 +425,7 @@ io.on('connection', (socket) => {
   socket.on('getAvailableLengths', () => {
     const lengths = Object.keys(wordsByLength)
       .map(Number)
+      .filter(n => n >= 3 && n <= 9)
       .sort((a, b) => a - b);
     socket.emit('availableLengths', lengths);
   });
