@@ -474,10 +474,10 @@
       position: relative;
     }
     .tile.filled { border-color: var(--text-muted); animation: pop .1s ease; }
-    .tile.revealed { border-color: transparent; animation: flipIn .4s ease forwards; }
-    .tile[data-state="correct"]  { background: var(--correct); color: #fff; }
-    .tile[data-state="present"]  { background: var(--present); color: #fff; }
-    .tile[data-state="absent"]   { background: var(--absent);  color: var(--text); }
+    .tile.revealed { border-color: transparent; }
+    .tile[data-state="correct"]  { background: var(--correct); color: #fff; border-color: transparent; }
+    .tile[data-state="present"]  { background: var(--present); color: #fff; border-color: transparent; }
+    .tile[data-state="absent"]   { background: var(--absent);  color: var(--text); border-color: transparent; }
 
     @keyframes pop {
       0%   { transform: scale(1); }
@@ -1388,13 +1388,19 @@ function checkGuessLocal(guess, word) {
 // REVEAL ROW
 // ─────────────────────────────────────────────────────────────────────────────
 function revealRow(row, guess, result) {
-  const delay = 300; // ms per tile
+  const flipDuration = 500; // ms total flip duration per tile
+  const stagger = 300;      // ms between each tile starting
   result.forEach((tileState, col) => {
+    const tile = window.state.board[row][col];
     setTimeout(() => {
-      const tile = window.state.board[row][col];
-      tile.classList.add('revealed');
-      tile.dataset.state = tileState;
-    }, col * delay);
+      // Apply color at midpoint of flip (when tile is face-down)
+      setTimeout(() => { tile.dataset.state = tileState; }, flipDuration / 2);
+      tile.style.transition = `transform ${flipDuration}ms ease`;
+      tile.style.transform = 'rotateX(-90deg)';
+      setTimeout(() => {
+        tile.style.transform = 'rotateX(0deg)';
+      }, flipDuration / 2);
+    }, col * stagger);
   });
 }
 
