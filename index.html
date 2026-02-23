@@ -1,682 +1,1420 @@
-<!DOCTYPE html>  
-<html lang="en">  
-<head>  
-  <meta charset="UTF-8" />  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>  
-  <title>Wordle Game</title>  
-  <style>  
-    body {  
-      font-family: Arial, sans-serif;  
-      display: flex;  
-      flex-direction: column;  
-      align-items: center;  
-      background-color: #f0f0f0;  
-      padding: 20px;  
-    }  
-    #login-page, #game-page {  
-      display: none;  
-      flex-direction: column;  
-      align-items: center;  
-      width: 100%;  
-      max-width: 400px;  
-    }  
-    #error-message {  
-      display: none;  
-      color: red;  
-      font-size: 1.2em;  
-      margin-top: 20px;  
-      text-align: center;  
-    }  
-    #game-board {  
-      display: grid;  
-      grid-template-rows: repeat(6, 1fr);  
-      gap: 5px;  
-      margin: 20px 0;  
-    }  
-    .row {  
-      display: grid;  
-      grid-template-columns: repeat(5, 60px);  
-      gap: 5px;  
-    }  
-    .tile {  
-      width: 60px;  
-      height: 60px;  
-      border: 2px solid #ccc;  
-      display: flex;  
-      align-items: center;  
-      justify-content: center;  
-      font-size: 2em;  
-      text-transform: uppercase;  
-      background-color: white;  
-      transition: background-color 0.3s, color 0.3s, border-color 0.3s;  
-    }  
-    .tile.green {  
-      background-color: #6aaa64;  
-      color: white;  
-      border-color: #6aaa64;  
-    }  
-    .tile.yellow {  
-      background-color: #c9b458;  
-      color: white;  
-      border-color: #c9b458;  
-    }  
-    .tile.gray {  
-      background-color: #787c7e;  
-      color: white;  
-      border-color: #787c7e;  
-    }  
-    input {  
-      margin: 10px;  
-      padding: 10px;  
-      font-size: 1.2em;  
-      width: 100%;  
-      box-sizing: border-box;  
-    }  
-    #input {  
-      text-transform: uppercase;  
-    }  
-    #message, #login-message {  
-      margin-top: 10px;  
-      font-size: 1.2em;  
-      color: #333;  
-    }  
-    #score {  
-      margin: 10px 0;  
-      font-size: 1.1em;  
-      color: #333;  
-    }  
-    button {  
-      padding: 10px 20px;  
-      font-size: 1em;  
-      cursor: pointer;  
-      background-color: #4CAF50;  
-      color: white;  
-      border: none;  
-      border-radius: 5px;  
-      margin: 5px;  
-    }  
-    button:hover {  
-      background-color: #45a049;  
-    }  
-    button:disabled {  
-      background-color: #cccccc;  
-      cursor: not-allowed;  
-    }  
-    #reset-score-btn, #logout-btn {  
-      background-color: #d9534f;  
-    }  
-    #reset-score-btn:hover, #logout-btn:hover {  
-      background-color: #c9302c;  
-    }  
-    #leaderboard-btn, #admin-btn {  
-      background-color: #337ab7;  
-    }  
-    #leaderboard-btn:hover, #admin-btn:hover {  
-      background-color: #286090;  
-    }  
-    #admin-btn {  
-      display: none;  
-    }  
-    @media (max-width: 600px) {  
-      .row {  
-        grid-template-columns: repeat(5, 50px);  
-      }  
-      .tile {  
-        width: 50px;  
-        height: 50px;  
-        font-size: 1.5em;  
-      }  
-      #login-page, #game-page {  
-        max-width: 100%;  
-        padding: 0 10px;  
-      }  
-    }  
-  </style>  
-</head>  
-<body>  
-  <div id="login-page">  
-    <h1>Login to Wordle</h1>  
-    <input type="text" id="username" placeholder="Username" aria-label="Enter your username">  
-    <input type="password" id="password" placeholder="Password" aria-label="Enter your password">  
-    <button onclick="login()">Login</button>  
-    <div id="login-message"></div>  
-  </div>  
-  <div id="game-page">  
-    <h1>𝕎𝕆ℝ𝔻𝕃𝔼</h1>  
-    <div id="score">Logged in as: Unknown | Your Score: 0 | Highest Score: 0</div>  
-    <div id="game-board" role="grid" aria-label="Wordle game board"></div>  
-    <input 
-      type="text" 
-      id="input" 
-      maxlength="5" 
-      placeholder="Enter 5-letter word" 
-      inputmode="text" 
-      autocapitalize="characters" 
-      aria-label="Enter your 5-letter guess">  
-    <div>  
-      <button id="submit-btn" onclick="submitGuess()" disabled>Submit</button>  
-      <button onclick="restartGame()">Restart</button>  
-      <button id="reset-score-btn" onclick="resetScore()">Reset Score</button>  
-      <button id="logout-btn" onclick="logout()">Logout</button>  
-      <button id="leaderboard-btn" onclick="window.location.href='leaderboard.html'">Leaderboard</button>  
-      <button id="admin-btn" onclick="window.location.href='admin.html'">Admin Panel</button>  
-    </div>  
-    <div id="message"></div>  
-  </div>  
-  <div id="error-message">Error: Unable to load the game. Check console for details or try refreshing.</div>  
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worduel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 
-  <!-- 🔊 Sound Effects -->  
-  <audio id="click-sound" src="click.mp3"></audio>  
-  <audio id="win-sound" src="win.mp3"></audio>  
-  <audio id="lose-sound" src="lose.mp3"></audio>  
-  <audio id="restart-sound" src="restart.mp3"></audio>  
-  <audio id="error-sound" src="error.mp3"></audio>  
+  <style>
+    /* ═══ VARIABLES & RESET ══════════════════════════════════════════════════ */
+    :root {
+      --bg:         #111113;
+      --surface:    #1a1a1d;
+      --surface2:   #242428;
+      --border:     #3a3a3e;
+      --text:       #f0f0f2;
+      --text-muted: #7a7a85;
+      --correct:    #538d4e;
+      --present:    #b59f3b;
+      --absent:     #3a3a3e;
+      --tile-bg:    #1a1a1d;
+      --tile-border:#3a3a3e;
+      --key-bg:     #2d2d32;
+      --key-text:   #f0f0f2;
+      --accent:     #e8e8ec;
+      --danger:     #c0392b;
+      --warn:       #e67e22;
+      --radius:     6px;
+      --font-mono:  'IBM Plex Mono', monospace;
+      --font-serif: 'Playfair Display', Georgia, serif;
+    }
+    [data-theme="light"] {
+      --bg:         #f5f5f0;
+      --surface:    #ffffff;
+      --surface2:   #ebebea;
+      --border:     #d0d0cc;
+      --text:       #111113;
+      --text-muted: #888880;
+      --tile-bg:    #ffffff;
+      --tile-border:#d0d0cc;
+      --key-bg:     #d8d8d4;
+      --key-text:   #111113;
+      --absent:     #c0c0bb;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background .2s, color .2s;
+      overflow-x: hidden;
+    }
 
-  <script>  
-    let targetWord = "";  
-    let currentRow = 0;  
-    let gameOver = false;  
-    let validWords = [];  
-    let previousGuesses = [];  
-    let currentScore = 0;  
-    let currentUser = null;  
-    const gameBoard = document.getElementById("game-board");  
-    const inputField = document.getElementById("input");  
-    const submitBtn = document.getElementById("submit-btn");  
-    const message = document.getElementById("message");  
-    const scoreDisplay = document.getElementById("score");  
-    const loginPage = document.getElementById("login-page");  
-    const gamePage = document.getElementById("game-page");  
-    const loginMessage = document.getElementById("login-message");  
-    const usernameInput = document.getElementById("username");  
-    const passwordInput = document.getElementById("password");  
-    const adminBtn = document.getElementById("admin-btn");  
-    const errorMessage = document.getElementById("error-message");  
+    /* ═══ UTILITY ════════════════════════════════════════════════════════════ */
+    .hidden { display: none !important; }
+    button {
+      cursor: pointer;
+      font-family: var(--font-mono);
+      border: none;
+      outline: none;
+    }
+    input {
+      font-family: var(--font-mono);
+      outline: none;
+    }
 
-    // Disable audio if files are missing (uncomment if no audio files)  
-    // const play = () => {};  
-    const play = (sound) => {  
-      if (sound && sound.src) {  
-        sound.currentTime = 0;  
-        sound.play().catch(() => console.warn('Audio file failed to play:', sound.src));  
-      }  
-    };  
+    /* ═══ HEADER ═════════════════════════════════════════════════════════════ */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      height: 56px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+    .logo {
+      font-family: var(--font-serif);
+      font-size: 1.55rem;
+      font-weight: 900;
+      letter-spacing: .06em;
+      color: var(--text);
+    }
+    .logo span { color: var(--text-muted); font-style: italic; }
+    .header-actions { display: flex; gap: .5rem; }
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      padding: .3rem .5rem;
+      font-size: .8rem;
+      transition: color .15s, border-color .15s;
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--text-muted); }
 
-    const clickSound = document.getElementById("click-sound");  
-    const winSound = document.getElementById("win-sound");  
-    const loseSound = document.getElementById("lose-sound");  
-    const restartSound = document.getElementById("restart-sound");  
-    const errorSound = document.getElementById("error-sound");  
+    /* ═══ SCREENS ════════════════════════════════════════════════════════════ */
+    .screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem 3rem;
+    }
 
-    // Fallback word list  
-    const fallbackWords = ["APPLE", "HOUSE", "QUICK", "BREAD", "SMILE"];  
+    /* ─── HOME ─────────────────────────────────────────────────────────── */
+    #home-screen .tagline {
+      font-family: var(--font-serif);
+      font-style: italic;
+      color: var(--text-muted);
+      font-size: .95rem;
+      margin-bottom: 2.5rem;
+      margin-top: .25rem;
+    }
+    .home-title {
+      font-family: var(--font-serif);
+      font-size: 3.2rem;
+      font-weight: 900;
+      letter-spacing: .05em;
+      line-height: 1;
+      margin-bottom: .3rem;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 420px;
+    }
+    .card + .card { margin-top: 1rem; }
+    .card h2 {
+      font-size: .8rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+    .name-row {
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .name-row label {
+      font-size: .75rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .input-field {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: .5rem .75rem;
+      font-size: .875rem;
+      transition: border-color .15s;
+    }
+    .input-field:focus { border-color: var(--text-muted); }
+    .input-field::placeholder { color: var(--text-muted); }
 
-    // Simulate security.txt in localStorage  
-    function saveUserData(users) {  
-      try {  
-        localStorage.setItem('security.txt', JSON.stringify(users));  
-        console.log("User data saved:", users);  
-      } catch (error) {  
-        console.error("Error saving user data:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error saving user data. Check console.";  
-      }  
-    }  
+    /* Word length picker */
+    .length-label {
+      font-size: .75rem;
+      color: var(--text-muted);
+      margin-bottom: .5rem;
+    }
+    .length-picker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: 1.25rem;
+    }
+    .len-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: .8rem;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      transition: all .15s;
+    }
+    .len-btn:hover { border-color: var(--text-muted); color: var(--text); }
+    .len-btn.active {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
 
-    // Simulate score.txt in localStorage  
-    function saveScoreData(users) {  
-      try {  
-        const scores = Object.keys(users).map(username => ({  
-          username,  
-          totalScore: users[username].totalScore || 0  
-        }));  
-        localStorage.setItem('score.txt', JSON.stringify(scores));  
-        console.log("Score data saved:", scores);  
-      } catch (error) {  
-        console.error("Error saving score data:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error saving score data. Check console.";  
-      }  
-    }  
+    /* Max players picker */
+    .maxp-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-bottom: 1.25rem;
+    }
+    .maxp-row label { font-size: .75rem; color: var(--text-muted); }
+    .maxp-row input[type=range] { flex: 1; accent-color: var(--text); }
+    .maxp-val {
+      font-size: .875rem;
+      font-weight: 600;
+      min-width: 2ch;
+      text-align: right;
+    }
 
-    // Simple hash function for passwords (client-side demo only)  
-    function simpleHash(str) {  
-      str = String(str);  
-      let hash = 0;  
-      for (let i = 0; i < str.length; i++) {  
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);  
-        hash |= 0;  
-      }  
-      return hash;  
-    }  
+    /* Room code input */
+    .code-row {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    .code-input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: .5rem .75rem;
+      font-size: .95rem;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .code-input:focus { border-color: var(--text-muted); }
+    .code-input::placeholder { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-muted); }
 
-    // Initialize admin account  
-    function initializeAdmin() {  
-      console.log("Initializing admin account");  
-      try {  
-        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-        if (!users['Dipesh'] || users['Dipesh'].hashedPassword !== simpleHash('9804329373')) {  
-          users['Dipesh'] = {  
-            hashedPassword: simpleHash('9804329373'),  
-            totalScore: 0  
-          };  
-          saveUserData(users);  
-          saveScoreData(users);  
-        }  
-      } catch (error) {  
-        console.error("Error initializing admin:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error initializing admin account. Check console.";  
-      }  
-    }  
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: .7rem 1rem;
+      border-radius: var(--radius);
+      font-size: .875rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+    }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn + .btn { margin-top: .6rem; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { opacity: .85; }
 
-    // Get highest score  
-    function getHighestScore() {  
-      try {  
-        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-        let highestScore = 0;  
-        for (let user in users) {  
-          highestScore = Math.max(highestScore, users[user].totalScore || 0);  
-        }  
-        return highestScore;  
-      } catch (error) {  
-        console.error("Error getting highest score:", error);  
-        return 0;  
-      }  
-    }  
+    /* Divider */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin: .75rem 0;
+      color: var(--text-muted);
+      font-size: .75rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
 
-    // Update score display  
-    function updateScoreDisplay() {  
-      try {  
-        const highestScore = getHighestScore();  
-        scoreDisplay.textContent = `Logged in as: ${currentUser || 'Unknown'}${currentUser === 'Dipesh' ? ' (Admin)' : ''} | Your Score: ${currentScore} | Highest Score: ${highestScore}`;  
-        adminBtn.style.display = currentUser === 'Dipesh' ? 'inline-block' : 'none';  
-        console.log("Score display updated:", scoreDisplay.textContent);  
-      } catch (error) {  
-        console.error("Error updating score display:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error updating score display. Check console.";  
-      }  
-    }  
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+    .tab {
+      flex: 1;
+      padding: .55rem;
+      background: none;
+      border: none;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      transition: all .15s;
+    }
+    .tab.active {
+      background: var(--text);
+      color: var(--bg);
+    }
 
-    // Load words from file or use fallback  
-    async function loadWords() {  
-      console.log("Loading words from words.txt");  
-      try {  
-        const response = await fetch('words.txt');  
-        if (!response.ok) throw new Error(`Failed to load words.txt: ${response.status}`);  
-        const text = await response.text();  
-        validWords = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length === 5);  
-        if (validWords.length === 0) {  
-          validWords = fallbackWords;  
-          message.textContent = "Using fallback word list due to empty file.";  
-        }  
-        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
-        console.log("Words loaded, target word:", targetWord);  
-      } catch (error) {  
-        console.error("Error loading words:", error);  
-        validWords = fallbackWords;  
-        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
-        message.textContent = 'Using fallback word list due to error: ' + error.message;  
-        console.log("Using fallback words, target word:", targetWord);  
-      }  
-    }  
+    /* ─── LOBBY ────────────────────────────────────────────────────────── */
+    #lobby-screen .lobby-wrap {
+      width: 100%;
+      max-width: 480px;
+    }
+    .lobby-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .room-code-badge {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: .15em;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .3rem .9rem;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .room-code-badge:hover { border-color: var(--text-muted); }
+    .room-code-badge small {
+      display: block;
+      font-size: .65rem;
+      letter-spacing: .05em;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-bottom: .15rem;
+    }
+    .lobby-meta {
+      font-size: .8rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .player-list {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .player-list-header {
+      padding: .6rem 1rem;
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .player-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .7rem 1rem;
+      font-size: .875rem;
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .player-item:last-child { border-bottom: none; }
+    .player-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .player-name { flex: 1; }
+    .player-tag {
+      font-size: .65rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+    }
+    .player-tag.host { color: var(--text); border-color: var(--text-muted); }
+    .player-tag.you { color: var(--correct); border-color: var(--correct); }
+    .countdown-ring {
+      text-align: center;
+      margin: .5rem 0 1rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+    .countdown-ring small {
+      display: block;
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-top: -.2rem;
+    }
 
-    // Initialize game board with exactly 6 rows  
-    function initGameBoard() {  
-      console.log("Initializing game board");  
-      try {  
-        while (gameBoard.firstChild) {  
-          gameBoard.removeChild(gameBoard.firstChild);  
-        }  
-        for (let i = 0; i < 6; i++) {  
-          const row = document.createElement("div");  
-          row.className = "row";  
-          row.setAttribute("role", "row");  
-          for (let j = 0; j < 5; j++) {  
-            const tile = document.createElement("div");  
-            tile.className = "tile";  
-            tile.setAttribute("role", "gridcell");  
-            row.appendChild(tile);  
-          }  
-          gameBoard.appendChild(row);  
-        }  
-        console.log("Game board initialized with 6 rows");  
-      } catch (error) {  
-        console.error("Error initializing game board:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error initializing game board. Check console.";  
-      }  
-    }  
+    /* ─── GAME ─────────────────────────────────────────────────────────── */
+    #game-screen {
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 1.5rem;
+      padding-top: 1.5rem;
+    }
+    .game-sidebar {
+      width: 200px;
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: .6rem;
+    }
+    .mp-player-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .5rem .6rem;
+      border-radius: var(--radius);
+      margin-bottom: .3rem;
+      font-size: .8rem;
+      border: 1px solid transparent;
+      transition: background .2s;
+    }
+    .mp-player-item.is-you { border-color: var(--border); background: var(--surface); }
+    .mp-pip {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+      transition: background .3s;
+    }
+    .mp-pip.solved { background: var(--correct); }
+    .mp-pip.failed { background: var(--danger); }
+    .mp-pip.active { background: var(--present); }
+    .mp-player-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mp-player-score { color: var(--text-muted); font-size: .75rem; }
 
-    // Login function with duplicate username check  
-    function login() {  
-      console.log("Login attempt");  
-      try {  
-        const username = usernameInput.value.trim();  
-        const password = passwordInput.value;  
-        if (!username || !password) {  
-          loginMessage.textContent = "Please enter both username and password!";  
-          play(errorSound);  
-          return;  
-        }  
+    /* BOARD */
+    .game-center { display: flex; flex-direction: column; align-items: center; }
+    #board {
+      display: grid;
+      gap: 5px;
+      margin-bottom: 1.2rem;
+    }
+    .tile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 2px solid var(--tile-border);
+      border-radius: 4px;
+      background: var(--tile-bg);
+      color: var(--text);
+      user-select: none;
+      transition: border-color .1s;
+      position: relative;
+    }
+    .tile.filled { border-color: var(--text-muted); animation: pop .1s ease; }
+    .tile.revealed { border-color: transparent; animation: flipIn .4s ease forwards; }
+    .tile[data-state="correct"]  { background: var(--correct); color: #fff; }
+    .tile[data-state="present"]  { background: var(--present); color: #fff; }
+    .tile[data-state="absent"]   { background: var(--absent);  color: var(--text); }
 
-        const hashedPassword = simpleHash(String(password));  
-        const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    @keyframes flipIn {
+      0%   { transform: rotateX(0deg); }
+      45%  { transform: rotateX(-90deg); }
+      55%  { transform: rotateX(-90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      15%  { transform: translateX(-6px); }
+      30%  { transform: translateX(6px); }
+      45%  { transform: translateX(-5px); }
+      60%  { transform: translateX(5px); }
+      75%  { transform: translateX(-3px); }
+      90%  { transform: translateX(3px); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      40%  { transform: translateY(-18px); }
+      60%  { transform: translateY(-10px); }
+    }
+    .row-shake   { animation: shake .5s ease; }
+    .tile-bounce { animation: bounce .5s ease; }
 
-        if (users[username]) {  
-          if (users[username].hashedPassword === hashedPassword) {  
-            currentUser = username;  
-            localStorage.setItem('currentUser', username);  
-            currentScore = users[username].totalScore || 0;  
-            loginPage.style.display = 'none';  
-            gamePage.style.display = 'flex';  
-            errorMessage.style.display = 'none';  
-            console.log("Login successful, user:", username);  
-            resetGameState();  
-            updateScoreDisplay();  
-            init();  
-          } else {  
-            loginMessage.textContent = "Incorrect password! Check your password and try again.";  
-            console.log(`Login failed for ${username}: Expected hash ${users[username].hashedPassword}, got ${hashedPassword}`);  
-            play(errorSound);  
-          }  
-        } else {  
-          users[username] = { hashedPassword, totalScore: 0 };  
-          saveUserData(users);  
-          saveScoreData(users);  
-          currentUser = username;  
-          localStorage.setItem('currentUser', username);  
-          currentScore = 0;  
-          loginPage.style.display = 'none';  
-          gamePage.style.display = 'flex';  
-          errorMessage.style.display = 'none';  
-          console.log("New user created, user:", username);  
-          resetGameState();  
-          updateScoreDisplay();  
-          init();  
-        }  
-        usernameInput.value = '';  
-        passwordInput.value = '';  
-      } catch (error) {  
-        console.error("Login error:", error);  
-        loginMessage.textContent = "Error during login. Check console.";  
-        errorMessage.style.display = 'block';  
-      }  
-    }  
+    /* KEYBOARD */
+    #keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      width: 100%;
+      max-width: 500px;
+    }
+    .kb-row { display: flex; gap: 5px; }
+    .key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 56px;
+      border-radius: 5px;
+      border: none;
+      background: var(--key-bg);
+      color: var(--key-text);
+      font-family: var(--font-mono);
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .2s, color .2s, transform .08s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .key:active { transform: scale(.92); }
+    .key.wide { min-width: 58px; font-size: .7rem; }
+    .key[data-state="correct"] { background: var(--correct); color: #fff; }
+    .key[data-state="present"] { background: var(--present); color: #fff; }
+    .key[data-state="absent"]  { background: var(--absent);  color: var(--text-muted); }
 
-    // Logout function  
-    function logout() {  
-      try {  
-        play(restartSound);  
-        currentUser = null;  
-        localStorage.removeItem('currentUser');  
-        currentScore = 0;  
-        gamePage.style.display = 'none';  
-        loginPage.style.display = 'flex';  
-        errorMessage.style.display = 'none';  
-        loginMessage.textContent = '';  
-        message.textContent = '';  
-        console.log("Logged out");  
-      } catch (error) {  
-        console.error("Logout error:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error during logout. Check console.";  
-      }  
-    }  
+    /* TOAST */
+    #toast-container {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .4rem;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--text);
+      color: var(--bg);
+      font-size: .8rem;
+      font-weight: 700;
+      padding: .5rem 1.1rem;
+      border-radius: 20px;
+      letter-spacing: .05em;
+      animation: toastIn .25s ease, toastOut .3s ease 1.7s forwards;
+    }
+    @keyframes toastIn  { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+    @keyframes toastOut { to   { opacity: 0; transform: translateY(-8px); } }
 
-    // Input validation for alphabetic characters  
-    inputField.addEventListener("input", function() {  
-      try {  
-        this.value = this.value.replace(/[^a-zA-Z]/g, '').toUpperCase();  
-        submitBtn.disabled = this.value.length !== 5;  
-      } catch (error) {  
-        console.error("Input validation error:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error in input validation. Check console.";  
-      }  
-    });  
+    /* CONNECTING OVERLAY */
+    #connecting-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      gap: 1rem;
+    }
+    #connecting-overlay.hidden { display: none !important; }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--text);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .connect-msg { font-size: .875rem; color: var(--text-muted); }
 
-    // Handle Enter key for login  
-    usernameInput.addEventListener("keypress", function(event) {  
-      if (event.key === "Enter") login();  
-    });  
-    passwordInput.addEventListener("keypress", function(event) {  
-      if (event.key === "Enter") login();  
-    });  
+    /* ─── RESULTS ──────────────────────────────────────────────────────── */
+    #results-screen .results-wrap {
+      width: 100%;
+      max-width: 480px;
+    }
+    .results-heading {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 900;
+      margin-bottom: .25rem;
+    }
+    .results-word {
+      font-size: .85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+    }
+    .results-word strong {
+      font-size: 1.1rem;
+      color: var(--text);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .75rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: .5rem;
+    }
+    .result-rank {
+      font-size: 1.1rem;
+      font-weight: 700;
+      width: 24px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .result-name { flex: 1; font-weight: 600; }
+    .result-status {
+      font-size: .75rem;
+      font-weight: 700;
+      padding: .2rem .6rem;
+      border-radius: 12px;
+    }
+    .result-status.solved { background: var(--correct); color: #fff; }
+    .result-status.failed { background: var(--absent); color: var(--text-muted); }
+    .result-attempts { font-size: .75rem; color: var(--text-muted); }
 
-    // Handle Enter key for game  
-    inputField.addEventListener("keypress", function(event) {  
-      if (event.key === "Enter") submitGuess();  
-    });  
+    /* Mini guess grid in results */
+    .mini-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: .5rem;
+    }
+    .mini-row { display: flex; gap: 2px; }
+    .mini-tile {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      background: var(--border);
+    }
+    .mini-tile.correct { background: var(--correct); }
+    .mini-tile.present { background: var(--present); }
+    .mini-tile.absent  { background: var(--absent); }
 
-    // Reset game state  
-    function resetGameState() {  
-      console.log("Resetting game state");  
-      try {  
-        currentRow = 0;  
-        gameOver = false;  
-        previousGuesses = [];  
-        currentScore = 0;  
-        inputField.disabled = false;  
-        inputField.value = "";  
-        submitBtn.disabled = true;  
-        message.textContent = "";  
-        while (gameBoard.firstChild) {  
-          gameBoard.removeChild(gameBoard.firstChild);  
-        }  
-      } catch (error) {  
-        console.error("Error resetting game state:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error resetting game state. Check console.";  
-      }  
-    }  
+    /* ─── MISC ─────────────────────────────────────────────────────────── */
+    .error-msg {
+      font-size: .8rem;
+      color: var(--danger);
+      margin-top: .5rem;
+      min-height: 1.2em;
+    }
+    .info-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .75rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: .2rem .65rem;
+    }
+    .copied-flash { color: var(--correct) !important; border-color: var(--correct) !important; }
 
-    // Submit guess logic  
-    function submitGuess() {  
-      try {  
-        if (gameOver || !targetWord) {  
-          message.textContent = !targetWord ? 'Words not loaded yet!' : 'Game over!';  
-          inputField.disabled = true;  
-          submitBtn.disabled = true;  
-          return;  
-        }  
+    /* ─── RESPONSIVE ───────────────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      #game-screen { flex-direction: column; align-items: center; padding-top: 1rem; }
+      .game-sidebar { width: 100%; max-width: 400px; display: flex; flex-wrap: wrap; gap: .3rem; }
+      .game-sidebar .sidebar-title { width: 100%; }
+      .mp-player-item { flex: 0 1 auto; }
+      .key { min-width: 28px; height: 48px; font-size: .72rem; }
+      .key.wide { min-width: 46px; }
+    }
+    @media (max-width: 400px) {
+      .key { min-width: 24px; height: 44px; }
+      .key.wide { min-width: 40px; }
+    }
+  </style>
+</head>
+<body>
 
-        const guess = inputField.value.toUpperCase();  
+<!-- ─── CONNECTING OVERLAY ─────────────────────────────────────────────────── -->
+<div id="connecting-overlay">
+  <div class="spinner"></div>
+  <div class="connect-msg">Connecting to server…</div>
+  <div class="connect-msg" style="font-size:.75rem;margin-top:-.5rem;color:var(--text-muted);max-width:260px;text-align:center">
+    Free tier may need 30–60 s to wake up
+  </div>
+</div>
 
-        if (guess.length !== 5) {  
-          message.textContent = "Please enter a 5-letter word!";  
-          play(clickSound);  
-          return;  
-        }  
+<!-- ─── HEADER ─────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">WORD<span>uel</span></div>
+  <div class="header-actions">
+    <button class="icon-btn" id="theme-btn" title="Toggle theme">☀ Light</button>
+  </div>
+</header>
 
-        if (!validWords.includes(guess)) {  
-          message.textContent = "Not a valid word!";  
-          play(errorSound);  
-          return;  
-        }  
+<!-- ─── TOAST ─────────────────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
 
-        if (previousGuesses.includes(guess)) {  
-          message.textContent = "You already guessed that word!";  
-          play(errorSound);  
-          return;  
-        }  
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: HOME -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section class="screen" id="home-screen">
+  <h1 class="home-title">WORDUEL</h1>
+  <p class="tagline">multiplayer word guessing — any length, any room</p>
 
-        previousGuesses.push(guess);  
+  <!-- Name card -->
+  <div class="card">
+    <h2>Your Name</h2>
+    <div class="name-row">
+      <label for="player-name">Name</label>
+      <input class="input-field" id="player-name" type="text" maxlength="20" placeholder="Anonymous" />
+    </div>
+  </div>
 
-        const row = gameBoard.children[currentRow];  
-        const tiles = row.children;  
+  <!-- Singleplayer card -->
+  <div class="card" style="margin-top:1rem">
+    <h2>Singleplayer</h2>
+    <div class="length-label">Word length</div>
+    <div class="length-picker" id="sp-length-picker"></div>
+    <button class="btn btn-primary" id="sp-start-btn">Play Solo</button>
+  </div>
 
-        let guessArray = guess.split('');  
-        let targetArray = targetWord.split('');  
-        let letterUsed = Array(5).fill(false);  
+  <!-- Multiplayer card -->
+  <div class="card" style="margin-top:1rem">
+    <h2>Multiplayer</h2>
+    <div class="tabs" id="mp-tabs">
+      <button class="tab active" data-tab="public">Public Room</button>
+      <button class="tab" data-tab="private-create">Create Private</button>
+      <button class="tab" data-tab="private-join">Join Private</button>
+    </div>
 
-        for (let i = 0; i < 5; i++) {  
-          tiles[i].textContent = guessArray[i];  
-          if (guessArray[i] === targetArray[i]) {  
-            tiles[i].classList.add("green");  
-            letterUsed[i] = true;  
-            guessArray[i] = null;  
-          }  
-        }  
+    <!-- Public -->
+    <div id="tab-public">
+      <div class="length-label">Word length</div>
+      <div class="length-picker" id="pub-length-picker"></div>
+      <button class="btn btn-primary" id="pub-join-btn">Find Public Room</button>
+    </div>
 
-        for (let i = 0; i < 5; i++) {  
-          if (!tiles[i].classList.contains("green") && guessArray[i]) {  
-            for (let j = 0; j < 5; j++) {  
-              if (!letterUsed[j] && guessArray[i] === targetArray[j]) {  
-                tiles[i].classList.add("yellow");  
-                letterUsed[j] = true;  
-                guessArray[i] = null;  
-                break;  
-              }  
-            }  
-          }  
-          if (!tiles[i].classList.contains("green") && !tiles[i].classList.contains("yellow")) {  
-            tiles[i].classList.add("gray");  
-          }  
-        }  
+    <!-- Private Create -->
+    <div id="tab-private-create" class="hidden">
+      <div class="length-label">Word length</div>
+      <div class="length-picker" id="priv-c-length-picker"></div>
+      <div class="maxp-row">
+        <label for="maxp-range">Max players</label>
+        <input type="range" id="maxp-range" min="2" max="20" value="8" />
+        <span class="maxp-val" id="maxp-display">8</span>
+      </div>
+      <button class="btn btn-primary" id="priv-create-btn">Create Private Room</button>
+    </div>
 
-        if (guess === targetWord) {  
-          currentScore = [100, 80, 60, 40, 20, 10][currentRow];  
-          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-          users[currentUser].totalScore = (users[currentUser].totalScore || 0) + currentScore;  
-          saveUserData(users);  
-          saveScoreData(users);  
-          message.textContent = `🎉 Congratulations! You guessed it! (+${currentScore} points)`;  
-          play(winSound);  
-          gameOver = true;  
-          inputField.disabled = true;  
-          submitBtn.disabled = true;  
-          updateScoreDisplay();  
-          return;  
-        }  
+    <!-- Private Join -->
+    <div id="tab-private-join" class="hidden">
+      <div class="code-row">
+        <input class="code-input" id="join-code-input" type="text" maxlength="6" placeholder="Enter room code…" />
+        <button class="btn btn-primary" style="width:auto;padding:.5rem 1rem" id="priv-join-btn">Join</button>
+      </div>
+    </div>
 
-        currentRow++;  
-        if (currentRow >= 6) {  
-          message.textContent = `❌ Game Over! The word was ${targetWord}.`;  
-          play(loseSound);  
-          currentScore = 0;  
-          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-          users[currentUser].totalScore = users[currentUser].totalScore || 0;  
-          saveUserData(users);  
-          saveScoreData(users);  
-          gameOver = true;  
-          inputField.disabled = true;  
-          submitBtn.disabled = true;  
-          updateScoreDisplay();  
-        } else {  
-          play(clickSound);  
-        }  
+    <div class="error-msg" id="home-error"></div>
+  </div>
+</section>
 
-        inputField.value = "";  
-      } catch (error) {  
-        console.error("Error submitting guess:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error submitting guess. Check console.";  
-      }  
-    }  
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: LOBBY -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section class="screen hidden" id="lobby-screen">
+  <div class="lobby-wrap">
+    <div class="lobby-header">
+      <div class="room-code-badge" id="lobby-code-badge" title="Click to copy">
+        <small>Room Code</small>
+        <span id="lobby-code-text">——</span>
+      </div>
+      <div class="lobby-meta" id="lobby-meta"></div>
+    </div>
 
-    // Restart game  
-    function restartGame() {  
-      console.log("Restarting game");  
-      try {  
-        play(restartSound);  
-        resetGameState();  
-        targetWord = validWords[Math.floor(Math.random() * validWords.length)];  
-        initGameBoard();  
-        updateScoreDisplay();  
-      } catch (error) {  
-        console.error("Error restarting game:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error restarting game. Check console.";  
-      }  
-    }  
+    <div class="countdown-ring hidden" id="lobby-countdown">
+      <span id="countdown-num">30</span>
+      <small>auto-start in</small>
+    </div>
 
-    // Reset score for current user  
-    function resetScore() {  
-      try {  
-        if (confirm("Are you sure you want to reset your score?")) {  
-          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-          users[currentUser].totalScore = 0;  
-          saveUserData(users);  
-          saveScoreData(users);  
-          currentScore = 0;  
-          updateScoreDisplay();  
-          message.textContent = "Your score has been reset!";  
-          play(restartSound);  
-        }  
-      } catch (error) {  
-        console.error("Error resetting score:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error resetting score. Check console.";  
-      }  
-    }  
+    <div class="player-list" id="lobby-player-list">
+      <div class="player-list-header">Players</div>
+    </div>
 
-    // Check for existing session  
-    function checkSession() {  
-      console.log("Checking session");  
-      try {  
-        const savedUser = localStorage.getItem('currentUser');  
-        if (savedUser) {  
-          const users = JSON.parse(localStorage.getItem('security.txt')) || {};  
-          if (users[savedUser]) {  
-            currentUser = savedUser;  
-            currentScore = users[savedUser].totalScore || 0;  
-            loginPage.style.display = 'none';  
-            gamePage.style.display = 'flex';  
-            errorMessage.style.display = 'none';  
-            console.log("Session found, user:", currentUser);  
-            resetGameState();  
-            updateScoreDisplay();  
-            init();  
-          } else {  
-            localStorage.removeItem('currentUser');  
-            loginPage.style.display = 'flex';  
-            gamePage.style.display = 'none';  
-            errorMessage.style.display = 'none';  
-            console.log("Invalid session, showing login page");  
-          }  
-        } else {  
-          loginPage.style.display = 'flex';  
-          gamePage.style.display = 'none';  
-          errorMessage.style.display = 'none';  
-          console.log("No session, showing login page");  
-        }  
-      } catch (error) {  
-        console.error("Session check error:", error);  
-        loginPage.style.display = 'flex';  
-        gamePage.style.display = 'none';  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Error checking session. Check console.";  
-      }  
-    }  
+    <div class="error-msg" id="lobby-error"></div>
 
-    // Initialize game  
-    async function init() {  
-      console.log("Initializing game");  
-      try {  
-        await loadWords();  
-        initGameBoard();  
-        console.log("Game initialized successfully");  
-      } catch (error) {  
-        console.error("Initialization error:", error);  
-        errorMessage.style.display = 'block';  
-        errorMessage.textContent = "Failed to initialize game: " + error.message;  
-      }  
-    }  
+    <button class="btn btn-primary hidden" id="lobby-start-btn">Start Game</button>
+    <button class="btn btn-ghost" id="lobby-leave-btn" style="margin-top:.6rem">Leave Room</button>
+  </div>
+</section>
 
-    // Initialize admin and check session  
-    console.log("Starting game load");  
-    try {  
-      initializeAdmin();  
-      checkSession();  
-    } catch (error) {  
-      console.error("Startup error:", error);  
-      loginPage.style.display = 'flex';  
-      gamePage.style.display = 'none';  
-      errorMessage.style.display = 'block';  
-      errorMessage.textContent = "Startup error. Check console and try refreshing.";  
-    }  
-  </script>  
-</body>  
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: GAME -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section class="screen hidden" id="game-screen">
+  <!-- Sidebar (multiplayer) -->
+  <div class="game-sidebar hidden" id="game-sidebar">
+    <div class="sidebar-title">Players</div>
+    <div id="sidebar-player-list"></div>
+  </div>
+
+  <!-- Board + keyboard -->
+  <div class="game-center">
+    <div id="board"></div>
+    <div id="keyboard"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN: RESULTS -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<section class="screen hidden" id="results-screen">
+  <div class="results-wrap">
+    <h2 class="results-heading" id="results-heading">Game Over</h2>
+    <p class="results-word" id="results-word"></p>
+    <div id="results-list"></div>
+    <button class="btn btn-primary" id="results-play-again" style="margin-top:1.5rem">Play Again</button>
+    <button class="btn btn-ghost" id="results-home" style="margin-top:.6rem">Back to Home</button>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG — Change SERVER_URL to your Render URL after deployment
+// ─────────────────────────────────────────────────────────────────────────────
+const SERVER_URL = 'https://YOUR-APP-NAME.onrender.com';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const state = {
+  mode: 'solo',      // 'solo' | 'multi'
+  wordLength: 5,
+  word: '',          // solo only
+  maxAttempts: 6,
+  currentRow: 0,
+  currentCol: 0,
+  currentGuess: [],
+  board: [],         // 2d array of tile elements
+  keyEls: {},        // letter → key element
+  finished: false,
+  myId: '',
+  roomCode: '',
+  isHost: false,
+  players: [],
+  spLength: 5,
+  pubLength: 5,
+  privCLength: 5,
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOCKET
+// ─────────────────────────────────────────────────────────────────────────────
+const socket = io(SERVER_URL, { autoConnect: true, reconnectionDelay: 1500 });
+
+const overlay = document.getElementById('connecting-overlay');
+socket.on('connect', () => { overlay.classList.add('hidden'); requestWordLengths(); });
+socket.on('connect_error', () => { overlay.querySelector('.connect-msg').textContent = 'Reconnecting…'; });
+socket.on('disconnect', () => { overlay.classList.remove('hidden'); });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THEME
+// ─────────────────────────────────────────────────────────────────────────────
+const themeBtn = document.getElementById('theme-btn');
+let isDark = true;
+themeBtn.addEventListener('click', () => {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  themeBtn.textContent = isDark ? '☀ Light' : '☽ Dark';
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WORD LENGTHS
+// ─────────────────────────────────────────────────────────────────────────────
+let availableLengths = [3,4,5,6,7,8];
+
+function requestWordLengths() {
+  socket.emit('getAvailableLengths');
+}
+
+socket.on('availableLengths', (lengths) => {
+  availableLengths = lengths.length ? lengths : availableLengths;
+  buildAllPickers();
+});
+
+function buildAllPickers() {
+  buildPicker('sp-length-picker',    'spLength',    state.spLength);
+  buildPicker('pub-length-picker',   'pubLength',   state.pubLength);
+  buildPicker('priv-c-length-picker','privCLength',  state.privCLength);
+}
+
+function buildPicker(containerId, stateKey, selected) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (const len of availableLengths) {
+    const btn = document.createElement('button');
+    btn.className = 'len-btn' + (len === selected ? ' active' : '');
+    btn.textContent = len;
+    btn.addEventListener('click', () => {
+      state[stateKey] = len;
+      container.querySelectorAll('.len-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+    container.appendChild(btn);
+  }
+  if (!availableLengths.includes(selected) && availableLengths.length) {
+    state[stateKey] = availableLengths.find(l => l === 5) || availableLengths[0];
+    container.querySelector('.len-btn')?.classList.add('active');
+  }
+}
+
+buildAllPickers(); // initial render with defaults
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TABS (multiplayer)
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('mp-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('#mp-tabs .tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  const key = tab.dataset.tab;
+  ['tab-public','tab-private-create','tab-private-join'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== `tab-${key}`);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAX PLAYERS SLIDER
+// ─────────────────────────────────────────────────────────────────────────────
+const maxpRange = document.getElementById('maxp-range');
+const maxpDisplay = document.getElementById('maxp-display');
+maxpRange.addEventListener('input', () => { maxpDisplay.textContent = maxpRange.value; });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCREEN SWITCHER
+// ─────────────────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+showScreen('home-screen');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOME ACTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+function getPlayerName() {
+  return document.getElementById('player-name').value.trim() || 'Anonymous';
+}
+
+// Solo
+document.getElementById('sp-start-btn').addEventListener('click', () => {
+  const len = state.spLength;
+  state.mode = 'solo';
+  state.wordLength = len;
+  socket.emit('getWord', { wordLength: len });
+});
+
+socket.on('wordAssigned', ({ word }) => {
+  state.word = word;
+  state.wordLength = word.length;
+  startGame();
+});
+
+// Public room
+document.getElementById('pub-join-btn').addEventListener('click', () => {
+  setHomeError('');
+  socket.emit('joinPublicRoom', { wordLength: state.pubLength, playerName: getPlayerName() });
+});
+
+// Private create
+document.getElementById('priv-create-btn').addEventListener('click', () => {
+  setHomeError('');
+  socket.emit('createPrivateRoom', {
+    wordLength: state.privCLength,
+    maxPlayers: parseInt(maxpRange.value, 10),
+    playerName: getPlayerName()
+  });
+});
+
+// Private join
+document.getElementById('priv-join-btn').addEventListener('click', joinPrivateRoom);
+document.getElementById('join-code-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') joinPrivateRoom();
+});
+function joinPrivateRoom() {
+  setHomeError('');
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (code.length < 4) { setHomeError('Enter a valid room code.'); return; }
+  socket.emit('joinPrivateRoom', { roomCode: code, playerName: getPlayerName() });
+}
+
+function setHomeError(msg) {
+  document.getElementById('home-error').textContent = msg;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOBBY
+// ─────────────────────────────────────────────────────────────────────────────
+socket.on('roomJoined', ({ roomCode, room, isHost, myId }) => {
+  state.mode = 'multi';
+  state.roomCode = roomCode;
+  state.isHost = isHost;
+  state.myId = myId;
+  state.wordLength = room.wordLength;
+
+  // Render lobby
+  document.getElementById('lobby-code-text').textContent = roomCode;
+  document.getElementById('lobby-meta').innerHTML =
+    `${room.wordLength}-letter words<br>` +
+    (room.type === 'public' ? 'Public room' : `Private · max ${room.maxPlayers || '∞'} players`);
+
+  document.getElementById('lobby-start-btn').classList.toggle('hidden', !isHost || room.type === 'public');
+  if (room.type === 'public') document.getElementById('lobby-countdown').classList.remove('hidden');
+
+  showScreen('lobby-screen');
+  document.getElementById('lobby-error').textContent = '';
+});
+
+socket.on('playerList', (players) => {
+  state.players = players;
+  renderLobbyPlayers(players);
+  renderSidebarPlayers(players);
+});
+
+function renderLobbyPlayers(players) {
+  const list = document.getElementById('lobby-player-list');
+  list.innerHTML = '<div class="player-list-header">Players</div>';
+  players.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'player-item';
+    const initials = p.name.slice(0,2).toUpperCase();
+    const tags = [];
+    if (i === 0) tags.push('<span class="player-tag host">HOST</span>');
+    if (p.id === state.myId) tags.push('<span class="player-tag you">YOU</span>');
+    el.innerHTML = `
+      <div class="player-avatar">${initials}</div>
+      <div class="player-name">${escHtml(p.name)}</div>
+      ${tags.join('')}`;
+    list.appendChild(el);
+  });
+}
+
+socket.on('countdown', (n) => {
+  document.getElementById('countdown-num').textContent = n;
+});
+
+socket.on('newHost', (hostId) => {
+  state.isHost = hostId === state.myId;
+  document.getElementById('lobby-start-btn').classList.toggle('hidden', !state.isHost);
+});
+
+document.getElementById('lobby-start-btn').addEventListener('click', () => {
+  socket.emit('startGame');
+});
+document.getElementById('lobby-leave-btn').addEventListener('click', () => {
+  socket.disconnect();
+  socket.connect();
+  showScreen('home-screen');
+});
+document.getElementById('lobby-code-badge').addEventListener('click', () => {
+  navigator.clipboard.writeText(state.roomCode).catch(()=>{});
+  toast('Code copied!');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GAME START
+// ─────────────────────────────────────────────────────────────────────────────
+socket.on('gameStart', ({ wordLength }) => {
+  state.wordLength = wordLength;
+  state.word = ''; // server holds word in multiplayer
+  startGame();
+});
+
+function startGame() {
+  state.currentRow = 0;
+  state.currentCol = 0;
+  state.currentGuess = [];
+  state.finished = false;
+
+  const wl = state.wordLength;
+  const rows = 6;
+
+  // Build board
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  const tileSize = wl <= 5 ? 60 : wl <= 7 ? 50 : wl <= 9 ? 42 : 36;
+  board.style.gridTemplateColumns = `repeat(${wl}, ${tileSize}px)`;
+  board.style.gridTemplateRows = `repeat(${rows}, ${tileSize}px)`;
+
+  state.board = [];
+  for (let r = 0; r < rows; r++) {
+    state.board[r] = [];
+    for (let c = 0; c < wl; c++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.style.width = tile.style.height = tileSize + 'px';
+      tile.style.fontSize = (tileSize * .52) + 'px';
+      board.appendChild(tile);
+      state.board[r][c] = tile;
+    }
+  }
+
+  // Build keyboard
+  buildKeyboard();
+
+  // Show/hide sidebar
+  const sidebar = document.getElementById('game-sidebar');
+  if (state.mode === 'multi') {
+    sidebar.classList.remove('hidden');
+    renderSidebarPlayers(state.players);
+  } else {
+    sidebar.classList.add('hidden');
+  }
+
+  showScreen('game-screen');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────────────────────────────────────
+const KB_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L'],
+  ['ENTER','Z','X','C','V','B','N','M','⌫']
+];
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  state.keyEls = {};
+  KB_ROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'kb-row';
+    row.forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (key.length > 1 ? ' wide' : '');
+      btn.textContent = key;
+      btn.dataset.key = key;
+      btn.addEventListener('click', () => handleKey(key));
+      if (key.length === 1) state.keyEls[key] = btn;
+      rowEl.appendChild(btn);
+    });
+    kb.appendChild(rowEl);
+  });
+}
+
+// Physical keyboard
+document.addEventListener('keydown', e => {
+  if (document.getElementById('game-screen').classList.contains('hidden')) return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key === 'Enter') handleKey('ENTER');
+  else if (e.key === 'Backspace') handleKey('⌫');
+  else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+});
+
+function handleKey(key) {
+  if (state.finished) return;
+  const wl = state.wordLength;
+
+  if (key === '⌫') {
+    if (state.currentCol > 0) {
+      state.currentCol--;
+      state.currentGuess.pop();
+      state.board[state.currentRow][state.currentCol].textContent = '';
+      state.board[state.currentRow][state.currentCol].classList.remove('filled');
+    }
+  } else if (key === 'ENTER') {
+    if (state.currentCol < wl) { toast('Not enough letters'); shakeRow(state.currentRow); return; }
+    submitGuess();
+  } else {
+    if (state.currentCol >= wl) return;
+    const tile = state.board[state.currentRow][state.currentCol];
+    tile.textContent = key;
+    tile.classList.add('filled');
+    state.currentGuess.push(key.toLowerCase());
+    state.currentCol++;
+  }
+}
+
+function submitGuess() {
+  const guess = state.currentGuess.join('');
+
+  if (state.mode === 'solo') {
+    // Validate server-side, then do client-side check
+    socket.emit('validateGuess', { guess, wordLength: state.wordLength });
+    socket._pendingGuess = guess;
+  } else {
+    socket.emit('guess', { guess });
+  }
+}
+
+// Solo validation response
+socket.on('wordValid', () => {
+  const guess = socket._pendingGuess;
+  if (!guess) return;
+  const result = checkGuessLocal(guess, state.word);
+  revealRow(state.currentRow, guess, result);
+  updateKeys(guess, result);
+  const solved = result.every(r => r === 'correct');
+  state.currentRow++;
+  state.currentCol = 0;
+  state.currentGuess = [];
+  if (solved) {
+    state.finished = true;
+    setTimeout(() => showResultsSolo(true), 1800);
+  } else if (state.currentRow >= 6) {
+    state.finished = true;
+    setTimeout(() => showResultsSolo(false), 1800);
+  }
+});
+
+socket.on('invalidWord', () => {
+  toast('Not in word list');
+  shakeRow(state.currentRow);
+});
+
+// Multiplayer guess result
+socket.on('guessResult', ({ guess, result, solved, attempts, finished, word }) => {
+  revealRow(state.currentRow, guess, result);
+  updateKeys(guess, result);
+  state.currentRow++;
+  state.currentCol = 0;
+  state.currentGuess = [];
+  if (finished) {
+    state.finished = true;
+    if (solved) {
+      toast('🎉 Solved in ' + attempts + (attempts === 1 ? ' guess!' : ' guesses!'));
+    } else {
+      toast('The word was: ' + (word || '?').toUpperCase());
+    }
+  }
+});
+
+socket.on('playerUpdate', (player) => {
+  // Update sidebar
+  state.players = state.players.map(p => p.id === player.id ? { ...p, ...player } : p);
+  renderSidebarPlayers(state.players);
+});
+
+socket.on('gameEnd', ({ results, word }) => {
+  setTimeout(() => showResultsMulti(results, word), 1000);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCAL CHECK (solo)
+// ─────────────────────────────────────────────────────────────────────────────
+function checkGuessLocal(guess, word) {
+  const result = new Array(word.length).fill('absent');
+  const wordChars = word.split('');
+  const used = new Array(word.length).fill(false);
+  for (let i = 0; i < guess.length; i++) {
+    if (guess[i] === wordChars[i]) { result[i] = 'correct'; used[i] = true; }
+  }
+  for (let i = 0; i < guess.length; i++) {
+    if (result[i] === 'correct') continue;
+    for (let j = 0; j < word.length; j++) {
+      if (!used[j] && guess[i] === wordChars[j]) { result[i] = 'present'; used[j] = true; break; }
+    }
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REVEAL ROW
+// ─────────────────────────────────────────────────────────────────────────────
+function revealRow(row, guess, result) {
+  const delay = 300; // ms per tile
+  result.forEach((state, col) => {
+    setTimeout(() => {
+      const tile = window.state.board[row][col];
+      tile.classList.add('revealed');
+      tile.dataset.state = state;
+    }, col * delay);
+  });
+}
+
+function shakeRow(row) {
+  const tiles = state.board[row];
+  tiles.forEach(t => {
+    t.classList.remove('row-shake');
+    void t.offsetWidth; // reflow
+    t.classList.add('row-shake');
+  });
+}
+
+function updateKeys(guess, result) {
+  const priority = { correct: 3, present: 2, absent: 1 };
+  for (let i = 0; i < guess.length; i++) {
+    const key = state.keyEls[guess[i].toUpperCase()];
+    if (!key) continue;
+    const current = key.dataset.state;
+    if (!current || priority[result[i]] > (priority[current] || 0)) {
+      key.dataset.state = result[i];
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSidebarPlayers(players) {
+  const list = document.getElementById('sidebar-player-list');
+  list.innerHTML = '';
+  players.forEach(p => {
+    const el = document.createElement('div');
+    el.className = 'mp-player-item' + (p.id === state.myId ? ' is-you' : '');
+    const pipClass = p.solved ? 'solved' : p.finished ? 'failed' : p.attempts > 0 ? 'active' : '';
+    el.innerHTML = `
+      <div class="mp-pip ${pipClass}"></div>
+      <div class="mp-player-name" title="${escHtml(p.name)}">${escHtml(p.name)}</div>
+      <div class="mp-player-score">${p.attempts}/6</div>`;
+    list.appendChild(el);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESULTS
+// ─────────────────────────────────────────────────────────────────────────────
+function showResultsSolo(solved) {
+  document.getElementById('results-heading').textContent = solved ? 'Solved!' : 'Better luck next time';
+  document.getElementById('results-word').innerHTML = `The word was <strong>${state.word.toUpperCase()}</strong>`;
+  document.getElementById('results-list').innerHTML = '';
+  showScreen('results-screen');
+}
+
+function showResultsMulti(results, word) {
+  const winner = results.find(r => r.solved);
+  document.getElementById('results-heading').textContent = winner ? `${escHtml(winner.name)} wins!` : 'No one solved it';
+  document.getElementById('results-word').innerHTML = `The word was <strong>${(word||'').toUpperCase()}</strong>`;
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  results.forEach((r, i) => {
+    const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const el = document.createElement('div');
+    el.className = 'result-row';
+    const miniHtml = r.guesses.map(g =>
+      `<div class="mini-row">${g.result.map(s => `<div class="mini-tile ${s}"></div>`).join('')}</div>`
+    ).join('');
+    el.innerHTML = `
+      <div class="result-rank">${rankEmoji}</div>
+      <div>
+        <div class="result-name">${escHtml(r.name)}</div>
+        <div class="mini-grid">${miniHtml}</div>
+      </div>
+      <div>
+        <div class="result-status ${r.solved ? 'solved' : 'failed'}">${r.solved ? '✓ ' + r.attempts + '/6' : '✗'}</div>
+      </div>`;
+    list.appendChild(el);
+  });
+  showScreen('results-screen');
+}
+
+document.getElementById('results-play-again').addEventListener('click', () => {
+  if (state.mode === 'solo') {
+    socket.emit('getWord', { wordLength: state.wordLength });
+  } else {
+    // Re-join same room type — for simplicity, go back to home
+    showScreen('home-screen');
+    toast('Start a new room from the menu');
+  }
+});
+document.getElementById('results-home').addEventListener('click', () => {
+  showScreen('home-screen');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ERROR HANDLING
+// ─────────────────────────────────────────────────────────────────────────────
+socket.on('roomError', (msg) => {
+  setHomeError(msg);
+  document.getElementById('lobby-error').textContent = msg;
+  toast(msg);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 2100);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
 </html>
